@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Tips Thiessen Clicker</title>
+
+<style>
+
+body{
+font-family:Arial;
+background:#1b1f2a;
+color:white;
+margin:0;
+}
+
+#layout{
+display:grid;
+grid-template-columns:260px 1fr 260px;
+gap:10px;
+padding:10px;
+}
+
+.panel{
+background:#2a3040;
+padding:15px;
+border-radius:10px;
+}
+
+#center{
+text-align:center;
+}
+
+#face{
+width:240px;
+border-radius:20px;
+cursor:pointer;
+transition:transform .1s;
+}
+
+#face:active{
+transform:scale(.9);
+}
+
+button{
+width:220px;
+padding:8px;
+margin:4px;
+border:none;
+border-radius:6px;
+background:#f1c40f;
+font-weight:bold;
+cursor:pointer;
+}
+
+button:hover{
+background:#f39c12;
+}
+
+.stat{
+font-size:18px;
+margin:5px;
+}
+
+#clickUpgrades,#propertyUpgrades{
+display:flex;
+flex-wrap:wrap;
+justify-content:center;
+}
+
+</style>
+
+</head>
+<body>
+
+<div id="layout">
+
+<!-- LEFT PANEL -->
+<div class="panel">
+
+<h2>Player</h2>
+
+<div class="stat">Level: <span id="level">1</span></div>
+<div class="stat">XP: <span id="xp">0</span>/<span id="xpNeeded">100</span></div>
+
+</div>
+
+
+<!-- CENTER GAME -->
+<div class="panel" id="center">
+
+<h1>Tips Thiessen Clicker</h1>
+
+<div class="stat">Money: $<span id="money">1000</span></div>
+<div class="stat">Click Power: +<span id="clickPower">1</span></div>
+
+<br>
+
+<img src="tips-thiessen.png" id="face">
+
+<p>Click Tips to earn money</p>
+
+<h3>Click Upgrades</h3>
+<div id="clickUpgrades"></div>
+
+<h3>Properties</h3>
+<div id="propertyUpgrades"></div>
+
+</div>
+
+
+<!-- RIGHT PANEL -->
+<div class="panel">
+
+<h2>Leaderboard</h2>
+
+<div id="leaderboard"></div>
+
+<br>
+
+<input id="playerName" placeholder="Your name">
+
+<br><br>
+
+<button onclick="submitScore()">Submit Score</button>
+
+</div>
+
+</div>
+
+
+<script type="module">
+
+/* FIREBASE */
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+apiKey: "AIzaSyA_HIv5b2CRVdvaYbUiSaOprAh1SvMimdE",
+authDomain: "tips-thiessen-clicker-8f607.firebaseapp.com",
+projectId: "tips-thiessen-clicker-8f607",
+storageBucket: "tips-thiessen-clicker-8f607.firebasestorage.app",
+messagingSenderId: "144884405097",
+appId: "1:144884405097:web:9e20ba4672635ab63063f8"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+/* GAME DATA */
+
+let money = 1000
+let clickPower = 1
+
+let level = 1
+let xp = 0
+let xpNeeded = 100
+
+const clickUpgradeNames=[
+"Intern Training","Cold Calls","Sales Class","Lead Generator","Open House",
+"Neighborhood Expert","Negotiation Skills","Online Ads","Referral Network",
+"Marketing Team","Luxury Listings","Podcast","Billboards","Regional Manager",
+"National Marketing","Celebrity Listings","Property Mogul","Empire Builder",
+"Global Investor","Tycoon"
+]
+
+const propertyNames=[
+"Lemonade Office","Trailer Office","Starter Home","Townhouse","Apartment",
+"Duplex","Local Office","Apartment Building","Mini Mall","City Office",
+"Downtown Complex","Hotel","Luxury Apartments","Corporate Tower",
+"Financial Center","Mega Skyscraper","Private Island Resort",
+"International HQ","Global Empire","World Property Network"
+]
+
+let clickUpgrades=[]
+let properties=[]
+
+for(let i=0;i<20;i++){
+
+clickUpgrades.push({
+name:clickUpgradeNames[i],
+power:1+i*3,
+cost:1000+i*2000,
+bought:false
+})
+
+properties.push({
+name:propertyNames[i],
+income:5+i*10,
+cost:500+i*4000,
+owned:0
+})
+
+}
+
+/* CREATE BUTTONS */
+
+function createButtons(){
+
+const clickDiv=document.getElementById("clickUpgrades")
+const propDiv=document.getElementById("propertyUpgrades")
+
+clickUpgrades.forEach((u,i)=>{
+
+let b=document.createElement("button")
+b.innerText=u.name+" +"+u.power+" ($"+u.cost+")"
+
+b.onclick=()=>{
+
+if(!u.bought && money>=u.cost){
+
+money-=u.cost
+clickPower+=u.power
+u.bought=true
+addXP(20)
+update()
+
+}
+
+}
+
+clickDiv.appendChild(b)
+
+})
+
+properties.forEach((p,i)=>{
+
+let b=document.createElement("button")
+b.innerText=p.name+" ($"+p.cost+")"
+
+b.onclick=()=>{
+
+if(money>=p.cost){
+
+money-=p.cost
+p.owned++
+addXP(10)
+update()
+
+}
+
+}
+
+propDiv.appendChild(b)
+
+})
+
+}
+
+/* CLICKING */
+
+document.getElementById("face").onclick=function(){
+
+money+=clickPower
+addXP(1)
+update()
+
+}
+
+/* PASSIVE INCOME */
+
+setInterval(()=>{
+
+properties.forEach(p=>{
+money+=p.income*p.owned
+})
+
+update()
+
+},1000)
+
+/* LEVEL SYSTEM */
+
+function addXP(amount){
+
+xp+=amount
+
+if(xp>=xpNeeded){
+
+xp-=xpNeeded
+level++
+xpNeeded=Math.floor(xpNeeded*1.25)
+
+}
+
+}
+
+/* UPDATE UI */
+
+function update(){
+
+document.getElementById("money").innerText=Math.floor(money)
+document.getElementById("clickPower").innerText=clickPower
+document.getElementById("level").innerText=level
+document.getElementById("xp").innerText=xp
+document.getElementById("xpNeeded").innerText=xpNeeded
+
+}
+
+/* ONLINE LEADERBOARD */
+
+window.submitScore = async function(){
+
+let name=document.getElementById("playerName").value
+
+await addDoc(collection(db,"leaderboard"),{
+name:name,
+score:money
+})
+
+loadLeaderboard()
+
+}
+
+async function loadLeaderboard(){
+
+const querySnapshot = await getDocs(collection(db,"leaderboard"))
+
+let scores=[]
+
+querySnapshot.forEach(doc=>{
+scores.push(doc.data())
+})
+
+scores.sort((a,b)=>b.score-a.score)
+
+let text=""
+
+scores.slice(0,10).forEach((s,i)=>{
+text+=`${i+1}. ${s.name} - $${s.score}<br>`
+})
+
+document.getElementById("leaderboard").innerHTML=text
+
+}
+
+/* START GAME */
+
+createButtons()
+loadLeaderboard()
+update()
+
+</script>
+
+</body>
+</html>
