@@ -1,5 +1,59 @@
 <!DOCTYPE html>
 <html>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  const SUPABASE_URL = "https://tguvcureqxvcyfwunlou.supabase.co"
+
+const SUPABASE_KEY = "sb_publishable_vhgkMwf0tH8-RoDosECNEw_ormNSYpU"
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+  async function submitScore(){
+
+let name = document.getElementById("playerName").value
+
+if(!name){
+alert("Enter a name")
+return
+}
+
+await supabase
+.from("leaderboard")
+.insert([{ name: name, score: money }])
+
+loadLeaderboard()
+
+}
+
+
+async function loadLeaderboard(){
+
+const { data, error } = await supabase
+.from("leaderboard")
+.select("*")
+.order("score",{ ascending:false })
+.limit(10)
+
+if(error){
+console.log(error)
+return
+}
+
+let text=""
+
+data.forEach((player,i)=>{
+
+text += `${i+1}. ${player.name} - $${player.score}<br>`
+
+})
+
+document.getElementById("leaderboard").innerHTML = text
+
+<input id="playerName" placeholder="Your name">
+
+<button onclick="submitScore()">Submit Score</button>
+
+<div id="leaderboard"></div>}
+  
+  
 <head>
 <title>Tips Thiessen Clicker</title>
 
@@ -342,4 +396,5 @@ update()
 </script>
 
 </body>
+  loadLeaderboard()
 </html>
