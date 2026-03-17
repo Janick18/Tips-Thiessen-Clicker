@@ -6,7 +6,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-
 body{
 font-family:Arial;
 background:#12151c;
@@ -30,15 +29,13 @@ border-radius:10px;
 #center{text-align:center;}
 
 #face{
-width:230px;
+width:220px;
 border-radius:20px;
 cursor:pointer;
 transition:transform .1s;
 }
 
-#face:active{
-transform:scale(.9);
-}
+#face:active{transform:scale(.9);}
 
 button{
 width:220px;
@@ -51,8 +48,6 @@ font-weight:bold;
 cursor:pointer;
 }
 
-.stat{margin:6px;}
-
 </style>
 </head>
 
@@ -63,8 +58,8 @@ cursor:pointer;
 <!-- LEFT -->
 <div class="panel">
 <h2>Player</h2>
-<div class="stat">Level: <span id="level">1</span></div>
-<div class="stat">XP: <span id="xp">0</span>/<span id="xpNeeded">100</span></div>
+Level: <span id="level">1</span><br>
+XP: <span id="xp">0</span>/<span id="xpNeeded">100</span>
 </div>
 
 <!-- CENTER -->
@@ -72,10 +67,10 @@ cursor:pointer;
 
 <h1>Tips Thiessen Clicker</h1>
 
-<div class="stat">Money: $<span id="money">1000</span></div>
-<div class="stat">Click Power: +<span id="clickPower">1</span></div>
+Money: $<span id="money">1000</span><br>
+Click Power: +<span id="clickPower">1</span>
 
-<br>
+<br><br>
 
 <img src="tips-thiessen.png" id="face">
 
@@ -89,14 +84,12 @@ cursor:pointer;
 
 <!-- RIGHT -->
 <div class="panel">
-
 <h2>Leaderboard</h2>
 
-<input id="playerName" placeholder="Your name">
+<input id="playerName" placeholder="Name">
 <button onclick="submitScore()">Submit</button>
 
-<div id="leaderboard"></div>
-
+<div id="leaderboard">Loading...</div>
 </div>
 
 </div>
@@ -105,36 +98,42 @@ cursor:pointer;
 
 <script>
 
-/* SUPABASE */
+/* SAFE SUPABASE (WON'T CRASH GAME) */
 
-const supabase = window.supabase.createClient(
+let supabase = null
+
+try {
+supabase = window.supabase.createClient(
 "https://tguvcureqxvcyfwunlou.supabase.co",
 "sb_publishable_vhgkMwf0tH8-RoDosECNEw_ormNSYpU"
 )
+} catch(e){
+console.log("Supabase failed (game still works)")
+}
 
-/* GAME */
+/* GAME DATA */
 
-let money=1000
-let clickPower=1
+let money = 1000
+let clickPower = 1
 
-let level=1
-let xp=0
-let xpNeeded=100
+let level = 1
+let xp = 0
+let xpNeeded = 100
 
-const upgradeNames=[
-"Intern","Cold Calls","Sales Training","Marketing Ads","Lead Funnel",
-"Broker License","Luxury Clients","Regional Office","TV Ads","Celebrity Deals",
-"National Brand","Mega Campaign","Private Jet Deals","Global Clients",
-"Investment Fund","Property Empire","Skyline Builder","World Mogul",
-"Real Estate King","Ultimate Tycoon"
+const upgradeNames = [
+"Intern","Calls","Training","Ads","Leads",
+"Broker","Luxury","Office","TV","Celebrity",
+"Brand","Campaign","Jet Deals","Global",
+"Fund","Empire","Skyline","World Mogul",
+"King","Ultimate Tycoon"
 ]
 
-const propertyNames=[
-"Desk","Small Office","House","Duplex","Apartments",
-"Office Building","Mall","Hotel","Tower","Skyscraper",
-"Luxury Tower","Resort","Island","Mega City","Global HQ",
-"International Chain","World Empire","Planet Holdings",
-"Interstellar Realty","Multiverse Empire"
+const propertyNames = [
+"Desk","Office","House","Duplex","Apartments",
+"Building","Mall","Hotel","Tower","Skyscraper",
+"Luxury Tower","Resort","Island","Mega City",
+"Global HQ","Chain","Empire","Planet",
+"Galaxy","Multiverse"
 ]
 
 let upgrades=[]
@@ -144,34 +143,34 @@ for(let i=0;i<20;i++){
 
 upgrades.push({
 name:upgradeNames[i],
-basePower:1+i*2,
 count:0,
+power:1+i*2,
 baseCost:1000+i*1500
 })
 
 properties.push({
 name:propertyNames[i],
-income:5+i*15,
 count:0,
+income:5+i*15,
 baseCost:2000+i*3000
 })
 
 }
 
-/* PRICE SCALING (VERY HARD AFTER 5) */
+/* BETTER SCALING */
 
 function getCost(base,count){
 
-let cost = base * Math.pow(1.4,count)
+let cost = base * Math.pow(1.35,count)
 
-if(count>5){
-cost *= Math.pow(2.2,count-5)
+if(count > 5){
+cost *= Math.pow(2.5,count-5)
 }
 
 return Math.floor(cost)
 }
 
-/* UI */
+/* DRAW UI */
 
 function draw(){
 
@@ -182,28 +181,32 @@ document.getElementById("xp").innerText=xp
 document.getElementById("xpNeeded").innerText=xpNeeded
 
 let uHTML=""
+
 upgrades.forEach((u,i)=>{
 
-let cost=getCost(u.baseCost,u.count)
+let cost = getCost(u.baseCost,u.count)
 
-uHTML+=`<button onclick="buyUpgrade(${i})">
-${u.name} Lv.${u.count} (+${u.basePower}) - $${cost}
+uHTML += `<button onclick="buyUpgrade(${i})">
+${u.name} Lv.${u.count} (+${u.power}) - $${cost}
 </button>`
+
 })
 
-document.getElementById("upgrades").innerHTML=uHTML
+document.getElementById("upgrades").innerHTML = uHTML
 
 let pHTML=""
+
 properties.forEach((p,i)=>{
 
-let cost=getCost(p.baseCost,p.count)
+let cost = getCost(p.baseCost,p.count)
 
-pHTML+=`<button onclick="buyProperty(${i})">
+pHTML += `<button onclick="buyProperty(${i})">
 ${p.name} (${p.count}) - $${cost}
 </button>`
+
 })
 
-document.getElementById("properties").innerHTML=pHTML
+document.getElementById("properties").innerHTML = pHTML
 
 }
 
@@ -211,14 +214,14 @@ document.getElementById("properties").innerHTML=pHTML
 
 function buyUpgrade(i){
 
-let u=upgrades[i]
-let cost=getCost(u.baseCost,u.count)
+let u = upgrades[i]
+let cost = getCost(u.baseCost,u.count)
 
-if(money>=cost){
+if(money >= cost){
 
-money-=cost
+money -= cost
 u.count++
-clickPower+=u.basePower
+clickPower += u.power
 
 addXP(10)
 draw()
@@ -229,12 +232,12 @@ draw()
 
 function buyProperty(i){
 
-let p=properties[i]
-let cost=getCost(p.baseCost,p.count)
+let p = properties[i]
+let cost = getCost(p.baseCost,p.count)
 
-if(money>=cost){
+if(money >= cost){
 
-money-=cost
+money -= cost
 p.count++
 
 addXP(5)
@@ -246,25 +249,27 @@ draw()
 
 /* CLICK */
 
-document.getElementById("face").onclick=()=>{
+document.getElementById("face").onclick = () => {
 
-money+=clickPower
+money += clickPower
 
-let sound=document.getElementById("clickSound")
-sound.currentTime=0
-sound.play()
+let sound = document.getElementById("clickSound")
+if(sound){
+sound.currentTime = 0
+sound.play().catch(()=>{})
+}
 
 addXP(1)
 draw()
 
 }
 
-/* PASSIVE */
+/* PASSIVE INCOME */
 
 setInterval(()=>{
 
 properties.forEach(p=>{
-money+=p.income*p.count
+money += p.income * p.count
 })
 
 draw()
@@ -275,32 +280,54 @@ draw()
 
 function addXP(a){
 
-xp+=a
+xp += a
 
-if(xp>=xpNeeded){
-xp=0
+if(xp >= xpNeeded){
+xp = 0
 level++
-xpNeeded=Math.floor(xpNeeded*1.3)
+xpNeeded = Math.floor(xpNeeded * 1.3)
 }
 
 }
 
-/* LEADERBOARD */
+/* LEADERBOARD (SAFE) */
 
 async function submitScore(){
 
-let name=document.getElementById("playerName").value
+if(!supabase){
+alert("Leaderboard offline")
+return
+}
 
+let name = document.getElementById("playerName").value
+
+if(!name){
+alert("Enter name")
+return
+}
+
+try{
 await supabase.from("leaderboard")
 .insert([{name:name,score:Math.floor(money)}])
 
 loadLeaderboard()
 
+}catch(e){
+console.log("Submit failed", e)
+}
+
 }
 
 async function loadLeaderboard(){
 
-let {data}=await supabase
+if(!supabase){
+document.getElementById("leaderboard").innerText="Offline"
+return
+}
+
+try{
+
+let {data} = await supabase
 .from("leaderboard")
 .select("*")
 .order("score",{ascending:false})
@@ -309,15 +336,21 @@ let {data}=await supabase
 let text=""
 
 data.forEach((p,i)=>{
-text+=`${i+1}. ${p.name} - $${p.score}<br>`
+text += `${i+1}. ${p.name} - $${p.score}<br>`
 })
 
-document.getElementById("leaderboard").innerHTML=text
+document.getElementById("leaderboard").innerHTML = text
+
+}catch(e){
+document.getElementById("leaderboard").innerText="Error loading"
+}
 
 }
 
-loadLeaderboard()
+/* START */
+
 draw()
+loadLeaderboard()
 
 </script>
 
