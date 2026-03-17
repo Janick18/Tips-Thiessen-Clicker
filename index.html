@@ -3,6 +3,8 @@
 <head>
 <title>Tips Thiessen Clicker</title>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
 
 body{
@@ -67,7 +69,7 @@ margin:5px;
 
 <div id="layout">
 
-<!-- LEFT SIDE LEVELS -->
+<!-- LEFT -->
 <div class="panel">
 
 <h2>Player</h2>
@@ -75,16 +77,10 @@ margin:5px;
 <div class="stat">Level: <span id="level">1</span></div>
 <div class="stat">XP: <span id="xp">0</span>/<span id="xpNeeded">100</span></div>
 
-<br>
-
-<h3>Milestones</h3>
-
-<div id="milestones"></div>
-
 </div>
 
 
-<!-- CENTER GAME -->
+<!-- CENTER -->
 <div id="center" class="panel">
 
 <h1>Tips Thiessen Clicker</h1>
@@ -107,16 +103,15 @@ margin:5px;
 </div>
 
 
-<!-- RIGHT SIDE LEADERBOARD -->
+<!-- RIGHT -->
 <div class="panel">
 
 <h2>Leaderboard</h2>
 
-<div id="leaderboard"></div>
-
-<br>
-
+<input id="playerName" placeholder="Your name">
 <button onclick="saveScore()">Submit Score</button>
+
+<div id="leaderboard">Loading...</div>
 
 </div>
 
@@ -124,6 +119,21 @@ margin:5px;
 
 
 <script>
+
+/* SUPABASE SAFE SETUP */
+
+let supabase = null
+
+try {
+  supabase = window.supabase.createClient(
+    "https://tguvcureqxvcyfwunlou.supabase.co",
+    "sb_publishable_vhgkMwf0tH8-RoDosECNEw_ormNSYpU"
+  )
+} catch(e){
+  console.log("Supabase failed, game still works")
+}
+
+/* GAME */
 
 let money = 1000
 let clickPower = 1
@@ -180,11 +190,8 @@ const propDiv=document.getElementById("propertyUpgrades")
 clickUpgrades.forEach((u,i)=>{
 
 let b=document.createElement("button")
-
 b.innerText=u.name+"  +"+u.power+" ($"+u.cost+")"
-
 b.onclick=()=>buyClickUpgrade(i)
-
 clickDiv.appendChild(b)
 
 })
@@ -192,26 +199,25 @@ clickDiv.appendChild(b)
 properties.forEach((p,i)=>{
 
 let b=document.createElement("button")
-
 b.innerText=p.name+" ($"+p.cost+")"
-
 b.onclick=()=>buyProperty(i)
-
 propDiv.appendChild(b)
 
 })
 
 }
 
+/* CLICK */
+
 face.onclick=function(){
 
 money+=clickPower
-
 addXP(1)
-
 update()
 
 }
+
+/* BUY */
 
 function buyClickUpgrade(i){
 
@@ -224,7 +230,6 @@ clickPower+=u.power
 u.bought=true
 
 addXP(20)
-
 update()
 
 }
@@ -239,14 +244,14 @@ if(money>=p.cost){
 
 money-=p.cost
 p.owned++
-
 addXP(10)
-
 update()
 
 }
 
 }
+
+/* PASSIVE */
 
 setInterval(function(){
 
@@ -258,21 +263,21 @@ update()
 
 },1000)
 
+/* LEVEL */
 
 function addXP(amount){
 
 xp+=amount
 
 if(xp>=xpNeeded){
-
 xp-=xpNeeded
 level++
 xpNeeded=Math.floor(xpNeeded*1.25)
-
 }
 
 }
 
+/* UPDATE */
 
 function update(){
 
@@ -285,41 +290,74 @@ document.getElementById("xpNeeded").innerText=xpNeeded
 
 }
 
+/* 🌎 ONLINE LEADERBOARD */
 
-function saveScore(){
+async function saveScore(){
 
-let scores=JSON.parse(localStorage.getItem("leaderboard"))||[]
+if(!supabase){
+alert("Leaderboard offline")
+return
+}
 
-scores.push(money)
+let name = document.getElementById("playerName").value
 
-scores.sort((a,b)=>b-a)
+if(!name){
+alert("Enter your name")
+return
+}
 
-scores=scores.slice(0,10)
+try{
 
-localStorage.setItem("leaderboard",JSON.stringify(scores))
+await supabase
+.from("leaderboard")
+.insert([{ name:name, score:money }])
 
-showLeaderboard()
+loadLeaderboard()
+
+}catch(e){
+console.log("Error saving score", e)
+}
 
 }
 
-function showLeaderboard(){
+async function loadLeaderboard(){
 
-let scores=JSON.parse(localStorage.getItem("leaderboard"))||[]
+if(!supabase){
+document.getElementById("leaderboard").innerText="Offline"
+return
+}
+
+try{
+
+let {data,error} = await supabase
+.from("leaderboard")
+.select("*")
+.order("score",{ascending:false})
+.limit(10)
+
+if(error){
+console.log(error)
+return
+}
 
 let text=""
 
-scores.forEach((s,i)=>{
-
-text+=(i+1)+". $"+s+"<br>"
-
+data.forEach((s,i)=>{
+text += `${i+1}. ${s.name} - $${s.score}<br>`
 })
 
 document.getElementById("leaderboard").innerHTML=text
 
+}catch(e){
+document.getElementById("leaderboard").innerText="Error loading"
 }
 
+}
+
+/* START */
+
 createButtons()
-showLeaderboard()
+loadLeaderboard()
 update()
 
 </script>
