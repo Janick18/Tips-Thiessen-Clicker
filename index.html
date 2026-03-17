@@ -14,7 +14,7 @@ margin:0;
 
 #layout{
 display:grid;
-grid-template-columns:260px 1fr 260px;
+grid-template-columns:250px 1fr 250px;
 gap:10px;
 padding:10px;
 }
@@ -43,7 +43,7 @@ transform:scale(.9);
 button{
 width:220px;
 padding:8px;
-margin:4px;
+margin:5px;
 border:none;
 border-radius:6px;
 background:#f1c40f;
@@ -60,20 +60,14 @@ font-size:18px;
 margin:5px;
 }
 
-#clickUpgrades,#propertyUpgrades{
-display:flex;
-flex-wrap:wrap;
-justify-content:center;
-}
-
 </style>
-
 </head>
+
 <body>
 
 <div id="layout">
 
-<!-- LEFT PANEL -->
+<!-- LEFT SIDE LEVELS -->
 <div class="panel">
 
 <h2>Player</h2>
@@ -81,11 +75,17 @@ justify-content:center;
 <div class="stat">Level: <span id="level">1</span></div>
 <div class="stat">XP: <span id="xp">0</span>/<span id="xpNeeded">100</span></div>
 
+<br>
+
+<h3>Milestones</h3>
+
+<div id="milestones"></div>
+
 </div>
 
 
 <!-- CENTER GAME -->
-<div class="panel" id="center">
+<div id="center" class="panel">
 
 <h1>Tips Thiessen Clicker</h1>
 
@@ -107,7 +107,7 @@ justify-content:center;
 </div>
 
 
-<!-- RIGHT PANEL -->
+<!-- RIGHT SIDE LEADERBOARD -->
 <div class="panel">
 
 <h2>Leaderboard</h2>
@@ -116,37 +116,14 @@ justify-content:center;
 
 <br>
 
-<input id="playerName" placeholder="Your name">
-
-<br><br>
-
-<button onclick="submitScore()">Submit Score</button>
+<button onclick="saveScore()">Submit Score</button>
 
 </div>
 
 </div>
 
 
-<script type="module">
-
-/* FIREBASE */
-
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-const firebaseConfig = {
-apiKey: "AIzaSyA_HIv5b2CRVdvaYbUiSaOprAh1SvMimdE",
-authDomain: "tips-thiessen-clicker-8f607.firebaseapp.com",
-projectId: "tips-thiessen-clicker-8f607",
-storageBucket: "tips-thiessen-clicker-8f607.firebasestorage.app",
-messagingSenderId: "144884405097",
-appId: "1:144884405097:web:9e20ba4672635ab63063f8"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-/* GAME DATA */
+<script>
 
 let money = 1000
 let clickPower = 1
@@ -155,16 +132,19 @@ let level = 1
 let xp = 0
 let xpNeeded = 100
 
-const clickUpgradeNames=[
-"Intern Training","Cold Calls","Sales Class","Lead Generator","Open House",
-"Neighborhood Expert","Negotiation Skills","Online Ads","Referral Network",
-"Marketing Team","Luxury Listings","Podcast","Billboards","Regional Manager",
-"National Marketing","Celebrity Listings","Property Mogul","Empire Builder",
-"Global Investor","Tycoon"
+const face = document.getElementById("face")
+
+const clickUpgradeNames = [
+"Intern Training","Cold Call Scripts","Sales Workshop","Lead Generator",
+"Open House Strategy","Neighborhood Expert","Negotiation Skills",
+"Online Advertising","Referral Network","Marketing Assistant",
+"Luxury Listings","Real Estate Podcast","Billboard Ads",
+"Regional Manager","National Marketing","Celebrity Listings",
+"Property Mogul","Real Estate Empire","Global Investments","Tycoon Status"
 ]
 
-const propertyNames=[
-"Lemonade Office","Trailer Office","Starter Home","Townhouse","Apartment",
+const propertyNames = [
+"Lemonade Office","Trailer Office","Starter Home","Townhouse","Small Apartment",
 "Duplex","Local Office","Apartment Building","Mini Mall","City Office",
 "Downtown Complex","Hotel","Luxury Apartments","Corporate Tower",
 "Financial Center","Mega Skyscraper","Private Island Resort",
@@ -192,8 +172,6 @@ owned:0
 
 }
 
-/* CREATE BUTTONS */
-
 function createButtons(){
 
 const clickDiv=document.getElementById("clickUpgrades")
@@ -202,21 +180,10 @@ const propDiv=document.getElementById("propertyUpgrades")
 clickUpgrades.forEach((u,i)=>{
 
 let b=document.createElement("button")
-b.innerText=u.name+" +"+u.power+" ($"+u.cost+")"
 
-b.onclick=()=>{
+b.innerText=u.name+"  +"+u.power+" ($"+u.cost+")"
 
-if(!u.bought && money>=u.cost){
-
-money-=u.cost
-clickPower+=u.power
-u.bought=true
-addXP(20)
-update()
-
-}
-
-}
+b.onclick=()=>buyClickUpgrade(i)
 
 clickDiv.appendChild(b)
 
@@ -225,20 +192,10 @@ clickDiv.appendChild(b)
 properties.forEach((p,i)=>{
 
 let b=document.createElement("button")
+
 b.innerText=p.name+" ($"+p.cost+")"
 
-b.onclick=()=>{
-
-if(money>=p.cost){
-
-money-=p.cost
-p.owned++
-addXP(10)
-update()
-
-}
-
-}
+b.onclick=()=>buyProperty(i)
 
 propDiv.appendChild(b)
 
@@ -246,19 +203,52 @@ propDiv.appendChild(b)
 
 }
 
-/* CLICKING */
-
-document.getElementById("face").onclick=function(){
+face.onclick=function(){
 
 money+=clickPower
+
 addXP(1)
+
 update()
 
 }
 
-/* PASSIVE INCOME */
+function buyClickUpgrade(i){
 
-setInterval(()=>{
+let u=clickUpgrades[i]
+
+if(!u.bought && money>=u.cost){
+
+money-=u.cost
+clickPower+=u.power
+u.bought=true
+
+addXP(20)
+
+update()
+
+}
+
+}
+
+function buyProperty(i){
+
+let p=properties[i]
+
+if(money>=p.cost){
+
+money-=p.cost
+p.owned++
+
+addXP(10)
+
+update()
+
+}
+
+}
+
+setInterval(function(){
 
 properties.forEach(p=>{
 money+=p.income*p.owned
@@ -268,7 +258,6 @@ update()
 
 },1000)
 
-/* LEVEL SYSTEM */
 
 function addXP(amount){
 
@@ -284,59 +273,53 @@ xpNeeded=Math.floor(xpNeeded*1.25)
 
 }
 
-/* UPDATE UI */
 
 function update(){
 
 document.getElementById("money").innerText=Math.floor(money)
 document.getElementById("clickPower").innerText=clickPower
+
 document.getElementById("level").innerText=level
 document.getElementById("xp").innerText=xp
 document.getElementById("xpNeeded").innerText=xpNeeded
 
 }
 
-/* ONLINE LEADERBOARD */
 
-window.submitScore = async function(){
+function saveScore(){
 
-let name=document.getElementById("playerName").value
+let scores=JSON.parse(localStorage.getItem("leaderboard"))||[]
 
-await addDoc(collection(db,"leaderboard"),{
-name:name,
-score:money
-})
+scores.push(money)
 
-loadLeaderboard()
+scores.sort((a,b)=>b-a)
+
+scores=scores.slice(0,10)
+
+localStorage.setItem("leaderboard",JSON.stringify(scores))
+
+showLeaderboard()
 
 }
 
-async function loadLeaderboard(){
+function showLeaderboard(){
 
-const querySnapshot = await getDocs(collection(db,"leaderboard"))
-
-let scores=[]
-
-querySnapshot.forEach(doc=>{
-scores.push(doc.data())
-})
-
-scores.sort((a,b)=>b.score-a.score)
+let scores=JSON.parse(localStorage.getItem("leaderboard"))||[]
 
 let text=""
 
-scores.slice(0,10).forEach((s,i)=>{
-text+=`${i+1}. ${s.name} - $${s.score}<br>`
+scores.forEach((s,i)=>{
+
+text+=(i+1)+". $"+s+"<br>"
+
 })
 
 document.getElementById("leaderboard").innerHTML=text
 
 }
 
-/* START GAME */
-
 createButtons()
-loadLeaderboard()
+showLeaderboard()
 update()
 
 </script>
