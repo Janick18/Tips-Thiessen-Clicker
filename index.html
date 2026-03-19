@@ -9,6 +9,7 @@ font-family:Arial;
 background:#1b1f2a;
 color:white;
 margin:0;
+overflow:hidden;
 }
 
 #layout{
@@ -16,17 +17,19 @@ display:grid;
 grid-template-columns:250px 1fr 250px;
 gap:10px;
 padding:10px;
+height:100vh;
+box-sizing:border-box;
 }
 
 .panel{
 background:#2a3040;
 padding:15px;
 border-radius:10px;
+overflow:hidden;
 }
 
 #center{
 text-align:center;
-max-height:90vh;
 overflow-y:auto;
 }
 
@@ -50,7 +53,6 @@ border-radius:8px;
 background:linear-gradient(145deg,#f1c40f,#f39c12);
 font-weight:bold;
 cursor:pointer;
-box-shadow:0 4px #c27d0e;
 }
 
 .stat{
@@ -64,6 +66,20 @@ border-radius:6px;
 #clickUpgrades, #propertyUpgrades{
 max-height:250px;
 overflow-y:auto;
+}
+
+/* 💥 Floating money animation */
+.floating{
+position:absolute;
+color:#00ff99;
+font-weight:bold;
+pointer-events:none;
+animation:floatUp 1s ease-out forwards;
+}
+
+@keyframes floatUp{
+0%{opacity:1; transform:translateY(0);}
+100%{opacity:0; transform:translateY(-60px);}
 }
 </style>
 </head>
@@ -122,60 +138,55 @@ let xpNeeded = 100
 
 const face = document.getElementById("face")
 
-const clickNames = [
-"Intern Training","Cold Call Scripts","Sales Workshop","Lead Generator",
-"Open House Strategy","Neighborhood Expert","Negotiation Skills",
-"Online Advertising","Referral Network","Marketing Assistant",
-"Luxury Listings","Real Estate Podcast","Billboard Ads",
-"Regional Manager","National Marketing","Celebrity Listings",
-"Property Mogul","Real Estate Empire","Global Investments","Tycoon Status"
-]
-
-const propertyNames = [
-"Lemonade Office","Trailer Office","Starter Home","Townhouse","Small Apartment",
-"Duplex","Local Office","Apartment Building","Mini Mall","City Office",
-"Downtown Complex","Hotel","Luxury Apartments","Corporate Tower",
-"Financial Center","Mega Skyscraper","Private Island Resort",
-"International HQ","Global Empire","World Property Network"
-]
-
+/* 40 upgrades now */
 let upgrades=[]
 let properties=[]
 
-for(let i=0;i<20;i++){
+for(let i=0;i<40;i++){
+
 upgrades.push({
-name:clickNames[i],
-basePower:1+i*3,
-baseCost:1000+i*2000,
+name:"Upgrade "+(i+1),
+power:1+i*5,
+baseCost:1000+i*3000,
 level:0,
 element:null
 })
 
 properties.push({
-name:propertyNames[i],
-income:5+i*10,
-baseCost:500+i*4000,
+name:"Property "+(i+1),
+income:5+i*15,
+baseCost:500+i*5000,
 owned:0,
 element:null
 })
+
 }
 
+/* COST */
+
 function upgradeCost(u){
-let m = u.level < 4 ? 1.15 : 1.35
+let m = u.level < 4 ? 1.15 : 1.4
 return Math.floor(u.baseCost * Math.pow(m,u.level))
 }
 
 function propertyCost(p){
-let m = p.owned < 4 ? 1.12 : 1.30
+let m = p.owned < 4 ? 1.12 : 1.35
 return Math.floor(p.baseCost * Math.pow(m,p.owned))
 }
 
+/* 🔥 ONLY HIGHEST UPGRADE COUNTS */
+
 function recalcClick(){
-clickPower = 1
+let max = 1
 upgrades.forEach(u=>{
-clickPower += u.level * u.basePower
-})
+if(u.level > 0){
+max = Math.max(max, u.power)
 }
+})
+clickPower = max
+}
+
+/* BUTTONS */
 
 function createButtons(){
 
@@ -197,6 +208,8 @@ pDiv.appendChild(b)
 })
 
 }
+
+/* BUY */
 
 function buyUpgrade(i){
 let u = upgrades[i]
@@ -223,13 +236,29 @@ update()
 }
 }
 
+/* 💥 CLICK + ANIMATION */
+
 if(face){
-face.onclick = function(){
+face.onclick = function(e){
+
 money += clickPower
 addXP(1)
 update()
+
+let float = document.createElement("div")
+float.className = "floating"
+float.innerText = "+" + clickPower
+
+float.style.left = (e.pageX) + "px"
+float.style.top = (e.pageY) + "px"
+
+document.body.appendChild(float)
+
+setTimeout(()=>float.remove(),1000)
 }
 }
+
+/* PASSIVE */
 
 setInterval(()=>{
 properties.forEach(p=>{
@@ -237,6 +266,8 @@ money += p.income * p.owned
 })
 update()
 },1000)
+
+/* LEVEL */
 
 function addXP(a){
 xp += a
@@ -247,6 +278,8 @@ xpNeeded = Math.floor(xpNeeded * 1.25)
 }
 }
 
+/* SAVE */
+
 function saveGame(){
 let data={
 money,level,xp,xpNeeded,
@@ -255,6 +288,8 @@ properties:properties.map(p=>p.owned)
 }
 localStorage.setItem("save",JSON.stringify(data))
 }
+
+/* LOAD */
 
 function loadGame(){
 let data = JSON.parse(localStorage.getItem("save"))
@@ -277,6 +312,8 @@ recalcClick()
 update()
 }
 
+/* UPDATE */
+
 function update(){
 
 document.getElementById("money").innerText=Math.floor(money)
@@ -288,7 +325,7 @@ document.getElementById("xpNeeded").innerText=xpNeeded
 upgrades.forEach(u=>{
 if(u.element){
 u.element.innerText =
-`${u.name} Lv.${u.level} (+${u.basePower}) - $${upgradeCost(u)}`
+`${u.name} Lv.${u.level} (+${u.power}) - $${upgradeCost(u)}`
 }
 })
 
@@ -301,11 +338,11 @@ p.element.innerText =
 
 }
 
-/* START ORDER (IMPORTANT) */
+/* START */
+
 createButtons()
 loadGame()
 update()
-
 setInterval(saveGame,5000)
 
 })
