@@ -18,14 +18,12 @@ grid-template-columns:250px 1fr 250px;
 gap:10px;
 padding:10px;
 height:100vh;
-box-sizing:border-box;
 }
 
 .panel{
 background:#2a3040;
 padding:15px;
 border-radius:10px;
-overflow:hidden;
 }
 
 #center{
@@ -37,11 +35,6 @@ overflow-y:auto;
 width:240px;
 border-radius:20px;
 cursor:pointer;
-transition:transform .1s;
-}
-
-#face:active{
-transform:scale(.9);
 }
 
 button{
@@ -51,7 +44,6 @@ margin:6px;
 border:none;
 border-radius:8px;
 background:linear-gradient(145deg,#f1c40f,#f39c12);
-font-weight:bold;
 cursor:pointer;
 }
 
@@ -68,7 +60,6 @@ max-height:250px;
 overflow-y:auto;
 }
 
-/* 💥 Floating money animation */
 .floating{
 position:absolute;
 color:#00ff99;
@@ -78,7 +69,7 @@ animation:floatUp 1s ease-out forwards;
 }
 
 @keyframes floatUp{
-0%{opacity:1; transform:translateY(0);}
+0%{opacity:1;}
 100%{opacity:0; transform:translateY(-60px);}
 }
 </style>
@@ -103,6 +94,7 @@ animation:floatUp 1s ease-out forwards;
 
 <div class="stat">Money: $<span id="money">1000</span></div>
 <div class="stat">Click Power: +<span id="clickPower">1</span></div>
+<div class="stat">Money/sec: $<span id="mps">0</span></div>
 
 <br>
 
@@ -125,27 +117,56 @@ animation:floatUp 1s ease-out forwards;
 
 </div>
 
+<!-- 🔊 SOUND -->
+<audio id="clickSound" src="click.mp3"></audio>
+
 <script>
 
 document.addEventListener("DOMContentLoaded", function(){
 
 let money = 1000
 let clickPower = 1
+let moneyPerSecond = 0
 
 let level = 1
 let xp = 0
 let xpNeeded = 100
 
 const face = document.getElementById("face")
+const clickSound = document.getElementById("clickSound")
 
-/* 40 upgrades now */
+/* 🔥 CUSTOM NAMES */
+
+const upgradeNames = [
+"Finger Training","Quick Clicks","Mouse Mastery","Speed Tapping","Precision Clicking",
+"Reflex Boost","Click Efficiency","Turbo Finger","Hyper Clicking","Click Master",
+"Elite Tapper","Pro Clicking","Ultra Reflex","Click Overdrive","Extreme Speed",
+"Automation Assist","Click Engine","Neural Reflex","Cyber Fingers","AI Clicking",
+"Quantum Taps","Nano Speed","Mega Click","Super Tap","Hyperdrive Click",
+"Click Storm","Click Frenzy","Click Reactor","Click Machine","Click Dominator",
+"Click Overlord","Click God","Infinite Tap","Omni Click","Ultimate Click",
+"Ascended Click","Divine Touch","Cosmic Tap","Galactic Click","Universal Click"
+]
+
+const propertyNames = [
+"Lemonade Stand","Garage Office","Small House","Townhouse","Apartment",
+"Duplex","Mini Office","Office Building","Strip Mall","City Office",
+"Business Center","Hotel","Luxury Condo","Corporate Tower","Finance Hub",
+"Skyscraper","Resort","Private Island","Headquarters","Global Offices",
+"International Towers","Mega City Block","Tech Campus","Real Estate Firm",
+"Investment Group","Property Empire","Global Holdings","World Offices",
+"Continental HQ","Luxury Resorts","Mega Resorts","Sky Cities","Ocean Cities",
+"Floating Cities","Space Offices","Moon Base","Mars Colony","Planetary HQ",
+"Galactic Empire","Universal Network"
+]
+
 let upgrades=[]
 let properties=[]
 
 for(let i=0;i<40;i++){
 
 upgrades.push({
-name:"Upgrade "+(i+1),
+name:upgradeNames[i],
 power:1+i*5,
 baseCost:1000+i*3000,
 level:0,
@@ -153,7 +174,7 @@ element:null
 })
 
 properties.push({
-name:"Property "+(i+1),
+name:propertyNames[i],
 income:5+i*15,
 baseCost:500+i*5000,
 owned:0,
@@ -174,36 +195,45 @@ let m = p.owned < 4 ? 1.12 : 1.35
 return Math.floor(p.baseCost * Math.pow(m,p.owned))
 }
 
-/* 🔥 ONLY HIGHEST UPGRADE COUNTS */
+/* ONLY BEST UPGRADE */
 
 function recalcClick(){
 let max = 1
 upgrades.forEach(u=>{
-if(u.level > 0){
-max = Math.max(max, u.power)
+if(u.level>0){
+max = Math.max(max,u.power)
 }
 })
 clickPower = max
+}
+
+/* CALC MPS */
+
+function calcMPS(){
+moneyPerSecond = 0
+properties.forEach(p=>{
+moneyPerSecond += p.income * p.owned
+})
 }
 
 /* BUTTONS */
 
 function createButtons(){
 
-const cDiv = document.getElementById("clickUpgrades")
-const pDiv = document.getElementById("propertyUpgrades")
+const cDiv=document.getElementById("clickUpgrades")
+const pDiv=document.getElementById("propertyUpgrades")
 
 upgrades.forEach((u,i)=>{
-let b = document.createElement("button")
-b.onclick = ()=>buyUpgrade(i)
-u.element = b
+let b=document.createElement("button")
+b.onclick=()=>buyUpgrade(i)
+u.element=b
 cDiv.appendChild(b)
 })
 
 properties.forEach((p,i)=>{
-let b = document.createElement("button")
-b.onclick = ()=>buyProperty(i)
-p.element = b
+let b=document.createElement("button")
+b.onclick=()=>buyProperty(i)
+p.element=b
 pDiv.appendChild(b)
 })
 
@@ -212,71 +242,58 @@ pDiv.appendChild(b)
 /* BUY */
 
 function buyUpgrade(i){
-let u = upgrades[i]
-let cost = upgradeCost(u)
+let u=upgrades[i]
+let cost=upgradeCost(u)
 
-if(money >= cost){
-money -= cost
+if(money>=cost){
+money-=cost
 u.level++
 recalcClick()
-addXP(20)
 update()
 }
 }
 
 function buyProperty(i){
-let p = properties[i]
-let cost = propertyCost(p)
+let p=properties[i]
+let cost=propertyCost(p)
 
-if(money >= cost){
-money -= cost
+if(money>=cost){
+money-=cost
 p.owned++
-addXP(10)
+calcMPS()
 update()
 }
 }
 
-/* 💥 CLICK + ANIMATION */
+/* CLICK */
 
 if(face){
-face.onclick = function(e){
+face.onclick=function(e){
 
-money += clickPower
-addXP(1)
+clickSound.currentTime = 0
+clickSound.play()
+
+money+=clickPower
 update()
 
-let float = document.createElement("div")
-float.className = "floating"
-float.innerText = "+" + clickPower
-
-float.style.left = (e.pageX) + "px"
-float.style.top = (e.pageY) + "px"
+let float=document.createElement("div")
+float.className="floating"
+float.innerText="+"+clickPower
+float.style.left=e.pageX+"px"
+float.style.top=e.pageY+"px"
 
 document.body.appendChild(float)
-
 setTimeout(()=>float.remove(),1000)
+
 }
 }
 
 /* PASSIVE */
 
 setInterval(()=>{
-properties.forEach(p=>{
-money += p.income * p.owned
-})
+money+=moneyPerSecond
 update()
 },1000)
-
-/* LEVEL */
-
-function addXP(a){
-xp += a
-if(xp >= xpNeeded){
-xp -= xpNeeded
-level++
-xpNeeded = Math.floor(xpNeeded * 1.25)
-}
-}
 
 /* SAVE */
 
@@ -292,23 +309,19 @@ localStorage.setItem("save",JSON.stringify(data))
 /* LOAD */
 
 function loadGame(){
-let data = JSON.parse(localStorage.getItem("save"))
-if(!data) return
+let data=JSON.parse(localStorage.getItem("save"))
+if(!data)return
 
 money=data.money
 level=data.level
 xp=data.xp
 xpNeeded=data.xpNeeded
 
-data.upgrades.forEach((lvl,i)=>{
-upgrades[i].level=lvl
-})
-
-data.properties.forEach((own,i)=>{
-properties[i].owned=own
-})
+data.upgrades.forEach((lvl,i)=>upgrades[i].level=lvl)
+data.properties.forEach((own,i)=>properties[i].owned=own)
 
 recalcClick()
+calcMPS()
 update()
 }
 
@@ -318,20 +331,18 @@ function update(){
 
 document.getElementById("money").innerText=Math.floor(money)
 document.getElementById("clickPower").innerText=clickPower
-document.getElementById("level").innerText=level
-document.getElementById("xp").innerText=xp
-document.getElementById("xpNeeded").innerText=xpNeeded
+document.getElementById("mps").innerText=moneyPerSecond
 
 upgrades.forEach(u=>{
 if(u.element){
-u.element.innerText =
+u.element.innerText=
 `${u.name} Lv.${u.level} (+${u.power}) - $${upgradeCost(u)}`
 }
 })
 
 properties.forEach(p=>{
 if(p.element){
-p.element.innerText =
+p.element.innerText=
 `${p.name} x${p.owned} (+$${p.income}/s) - $${propertyCost(p)}`
 }
 })
