@@ -29,6 +29,8 @@ border-radius:10px;
 
 #center{
 text-align:center;
+max-height:90vh;
+overflow-y:auto;
 }
 
 #face{
@@ -44,22 +46,32 @@ transform:scale(.9);
 
 button{
 width:220px;
-padding:8px;
-margin:5px;
+padding:10px;
+margin:6px;
 border:none;
-border-radius:6px;
-background:#f1c40f;
+border-radius:8px;
+background:linear-gradient(145deg,#f1c40f,#f39c12);
 font-weight:bold;
 cursor:pointer;
+box-shadow:0 4px #c27d0e;
 }
 
-button:hover{
-background:#f39c12;
+button:active{
+transform:translateY(2px);
+box-shadow:0 2px #c27d0e;
 }
 
 .stat{
 font-size:18px;
-margin:5px;
+margin:6px;
+background:#1e2433;
+padding:6px;
+border-radius:6px;
+}
+
+#clickUpgrades, #propertyUpgrades{
+max-height:250px;
+overflow-y:auto;
 }
 
 </style>
@@ -69,18 +81,15 @@ margin:5px;
 
 <div id="layout">
 
-<!-- LEFT -->
 <div class="panel">
-
 <h2>Player</h2>
-
 <div class="stat">Level: <span id="level">1</span></div>
 <div class="stat">XP: <span id="xp">0</span>/<span id="xpNeeded">100</span></div>
 
+<button onclick="saveGame()">💾 Save</button>
+<button onclick="loadGame()">📂 Load</button>
 </div>
 
-
-<!-- CENTER -->
 <div id="center" class="panel">
 
 <h1>Tips Thiessen Clicker</h1>
@@ -102,38 +111,28 @@ margin:5px;
 
 </div>
 
-
-<!-- RIGHT -->
 <div class="panel">
-
 <h2>Leaderboard</h2>
-
 <input id="playerName" placeholder="Your name">
 <button onclick="saveScore()">Submit Score</button>
-
 <div id="leaderboard">Loading...</div>
-
 </div>
 
 </div>
-
 
 <script>
 
-/* SUPABASE SAFE SETUP */
+/* SUPABASE */
 
 let supabase = null
-
 try {
   supabase = window.supabase.createClient(
     "https://tguvcureqxvcyfwunlou.supabase.co",
     "sb_publishable_vhgkMwf0tH8-RoDosECNEw_ormNSYpU"
   )
-} catch(e){
-  console.log("Supabase failed, game still works")
-}
+} catch(e){}
 
-/* GAME */
+/* GAME STATE */
 
 let money = 1000
 let clickPower = 1
@@ -144,7 +143,7 @@ let xpNeeded = 100
 
 const face = document.getElementById("face")
 
-const clickUpgradeNames = [
+const clickUpgradeNames = [/* same names */ 
 "Intern Training","Cold Call Scripts","Sales Workshop","Lead Generator",
 "Open House Strategy","Neighborhood Expert","Negotiation Skills",
 "Online Advertising","Referral Network","Marketing Assistant",
@@ -168,19 +167,33 @@ for(let i=0;i<20;i++){
 
 clickUpgrades.push({
 name:clickUpgradeNames[i],
-power:1+i*3,
-cost:1000+i*2000,
-bought:false
+basePower:1+i*3,
+baseCost:1000+i*2000,
+level:0
 })
 
 properties.push({
 name:propertyNames[i],
 income:5+i*10,
-cost:500+i*4000,
+baseCost:500+i*4000,
 owned:0
 })
 
 }
+
+/* COST */
+
+function getUpgradeCost(u){
+let m = u.level < 4 ? 1.15 : 1.35
+return Math.floor(u.baseCost * Math.pow(m,u.level))
+}
+
+function getPropertyCost(p){
+let m = p.owned < 4 ? 1.12 : 1.30
+return Math.floor(p.baseCost * Math.pow(m,p.owned))
+}
+
+/* CREATE BUTTONS */
 
 function createButtons(){
 
@@ -188,21 +201,17 @@ const clickDiv=document.getElementById("clickUpgrades")
 const propDiv=document.getElementById("propertyUpgrades")
 
 clickUpgrades.forEach((u,i)=>{
-
 let b=document.createElement("button")
-b.innerText=u.name+"  +"+u.power+" ($"+u.cost+")"
 b.onclick=()=>buyClickUpgrade(i)
+u.element=b
 clickDiv.appendChild(b)
-
 })
 
 properties.forEach((p,i)=>{
-
 let b=document.createElement("button")
-b.innerText=p.name+" ($"+p.cost+")"
 b.onclick=()=>buyProperty(i)
+p.element=b
 propDiv.appendChild(b)
-
 })
 
 }
@@ -210,72 +219,97 @@ propDiv.appendChild(b)
 /* CLICK */
 
 face.onclick=function(){
-
 money+=clickPower
 addXP(1)
 update()
-
 }
 
 /* BUY */
 
 function buyClickUpgrade(i){
-
 let u=clickUpgrades[i]
+let cost=getUpgradeCost(u)
 
-if(!u.bought && money>=u.cost){
-
-money-=u.cost
-clickPower+=u.power
-u.bought=true
-
+if(money>=cost){
+money-=cost
+u.level++
+clickPower+=u.basePower
 addXP(20)
 update()
-
 }
-
 }
 
 function buyProperty(i){
-
 let p=properties[i]
+let cost=getPropertyCost(p)
 
-if(money>=p.cost){
-
-money-=p.cost
+if(money>=cost){
+money-=cost
 p.owned++
 addXP(10)
 update()
-
 }
-
 }
 
 /* PASSIVE */
 
-setInterval(function(){
-
+setInterval(()=>{
 properties.forEach(p=>{
 money+=p.income*p.owned
 })
-
 update()
-
 },1000)
 
 /* LEVEL */
 
-function addXP(amount){
-
-xp+=amount
-
+function addXP(a){
+xp+=a
 if(xp>=xpNeeded){
 xp-=xpNeeded
 level++
 xpNeeded=Math.floor(xpNeeded*1.25)
 }
-
 }
+
+/* SAVE / LOAD */
+
+function saveGame(){
+
+let data={
+money,clickPower,level,xp,xpNeeded,
+clickUpgrades:clickUpgrades.map(u=>u.level),
+properties:properties.map(p=>p.owned)
+}
+
+localStorage.setItem("tycoonSave",JSON.stringify(data))
+}
+
+function loadGame(){
+
+let data=JSON.parse(localStorage.getItem("tycoonSave"))
+if(!data)return
+
+money=data.money
+clickPower=data.clickPower
+level=data.level
+xp=data.xp
+xpNeeded=data.xpNeeded
+
+data.clickUpgrades.forEach((lvl,i)=>{
+clickUpgrades[i].level=lvl
+clickPower += lvl*clickUpgrades[i].basePower
+})
+
+data.properties.forEach((own,i)=>{
+properties[i].owned=own
+})
+
+update()
+}
+
+/* AUTO SAVE */
+
+setInterval(saveGame,5000)
 
 /* UPDATE */
 
@@ -283,80 +317,54 @@ function update(){
 
 document.getElementById("money").innerText=Math.floor(money)
 document.getElementById("clickPower").innerText=clickPower
-
 document.getElementById("level").innerText=level
 document.getElementById("xp").innerText=xp
 document.getElementById("xpNeeded").innerText=xpNeeded
 
+clickUpgrades.forEach(u=>{
+let cost=getUpgradeCost(u)
+u.element.innerText=`${u.name} Lv.${u.level} (+${u.basePower}) - $${cost}`
+})
+
+properties.forEach(p=>{
+let cost=getPropertyCost(p)
+p.element.innerText=`${p.name} x${p.owned} (+$${p.income}/s) - $${cost}`
+})
+
 }
 
-/* 🌎 ONLINE LEADERBOARD */
+/* LEADERBOARD */
 
 async function saveScore(){
+if(!supabase)return
+let name=document.getElementById("playerName").value
+if(!name)return
 
-if(!supabase){
-alert("Leaderboard offline")
-return
-}
-
-let name = document.getElementById("playerName").value
-
-if(!name){
-alert("Enter your name")
-return
-}
-
-try{
-
-await supabase
-.from("leaderboard")
-.insert([{ name:name, score:money }])
-
+await supabase.from("leaderboard").insert([{name,score:money}])
 loadLeaderboard()
-
-}catch(e){
-console.log("Error saving score", e)
-}
-
 }
 
 async function loadLeaderboard(){
+if(!supabase)return
 
-if(!supabase){
-document.getElementById("leaderboard").innerText="Offline"
-return
-}
-
-try{
-
-let {data,error} = await supabase
+let {data}=await supabase
 .from("leaderboard")
 .select("*")
 .order("score",{ascending:false})
 .limit(10)
 
-if(error){
-console.log(error)
-return
-}
-
 let text=""
-
 data.forEach((s,i)=>{
-text += `${i+1}. ${s.name} - $${s.score}<br>`
+text+=`${i+1}. ${s.name} - $${s.score}<br>`
 })
 
 document.getElementById("leaderboard").innerHTML=text
-
-}catch(e){
-document.getElementById("leaderboard").innerText="Error loading"
-}
-
 }
 
 /* START */
 
 createButtons()
+loadGame()
 loadLeaderboard()
 update()
 
