@@ -3,8 +3,6 @@
 <head>
 <title>Tips Thiessen Clicker</title>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <style>
 
 body{
@@ -113,24 +111,14 @@ overflow-y:auto;
 
 <div class="panel">
 <h2>Leaderboard</h2>
-<input id="playerName" placeholder="Your name">
-<button onclick="saveScore()">Submit Score</button>
-<div id="leaderboard">Loading...</div>
+<p>(Optional - not active)</p>
 </div>
 
 </div>
 
 <script>
 
-/* SUPABASE */
-
-let supabase = null
-try {
-  supabase = window.supabase.createClient(
-    "https://tguvcureqxvcyfwunlou.supabase.co",
-    "sb_publishable_vhgkMwf0tH8-RoDosECNEw_ormNSYpU"
-  )
-} catch(e){}
+document.addEventListener("DOMContentLoaded", () => {
 
 /* GAME STATE */
 
@@ -143,7 +131,7 @@ let xpNeeded = 100
 
 const face = document.getElementById("face")
 
-const clickUpgradeNames = [/* same names */ 
+const clickUpgradeNames = [
 "Intern Training","Cold Call Scripts","Sales Workshop","Lead Generator",
 "Open House Strategy","Neighborhood Expert","Negotiation Skills",
 "Online Advertising","Referral Network","Marketing Assistant",
@@ -169,14 +157,16 @@ clickUpgrades.push({
 name:clickUpgradeNames[i],
 basePower:1+i*3,
 baseCost:1000+i*2000,
-level:0
+level:0,
+element:null
 })
 
 properties.push({
 name:propertyNames[i],
 income:5+i*10,
 baseCost:500+i*4000,
-owned:0
+owned:0,
+element:null
 })
 
 }
@@ -193,12 +183,15 @@ let m = p.owned < 4 ? 1.12 : 1.30
 return Math.floor(p.baseCost * Math.pow(m,p.owned))
 }
 
-/* CREATE BUTTONS */
+/* BUTTONS */
 
 function createButtons(){
 
 const clickDiv=document.getElementById("clickUpgrades")
 const propDiv=document.getElementById("propertyUpgrades")
+
+clickDiv.innerHTML=""
+propDiv.innerHTML=""
 
 clickUpgrades.forEach((u,i)=>{
 let b=document.createElement("button")
@@ -218,10 +211,12 @@ propDiv.appendChild(b)
 
 /* CLICK */
 
+if(face){
 face.onclick=function(){
 money+=clickPower
 addXP(1)
 update()
+}
 }
 
 /* BUY */
@@ -233,7 +228,7 @@ let cost=getUpgradeCost(u)
 if(money>=cost){
 money-=cost
 u.level++
-clickPower+=u.basePower
+recalculateClickPower()
 addXP(20)
 update()
 }
@@ -251,7 +246,16 @@ update()
 }
 }
 
-/* PASSIVE */
+/* FIXED POWER */
+
+function recalculateClickPower(){
+clickPower = 1
+clickUpgrades.forEach(u=>{
+clickPower += u.level * u.basePower
+})
+}
+
+/* PASSIVE INCOME */
 
 setInterval(()=>{
 properties.forEach(p=>{
@@ -271,39 +275,37 @@ xpNeeded=Math.floor(xpNeeded*1.25)
 }
 }
 
-/* SAVE / LOAD */
+/* SAVE */
 
 function saveGame(){
-
 let data={
-money,clickPower,level,xp,xpNeeded,
+money,level,xp,xpNeeded,
 clickUpgrades:clickUpgrades.map(u=>u.level),
 properties:properties.map(p=>p.owned)
 }
-
 localStorage.setItem("tycoonSave",JSON.stringify(data))
 }
 
-function loadGame(){
+/* LOAD */
 
+function loadGame(){
 let data=JSON.parse(localStorage.getItem("tycoonSave"))
 if(!data)return
 
 money=data.money
-clickPower=data.clickPower
 level=data.level
 xp=data.xp
 xpNeeded=data.xpNeeded
 
 data.clickUpgrades.forEach((lvl,i)=>{
 clickUpgrades[i].level=lvl
-clickPower += lvl*clickUpgrades[i].basePower
 })
 
 data.properties.forEach((own,i)=>{
 properties[i].owned=own
 })
 
+recalculateClickPower()
 update()
 }
 
@@ -311,7 +313,7 @@ update()
 
 setInterval(saveGame,5000)
 
-/* UPDATE */
+/* UPDATE UI */
 
 function update(){
 
@@ -323,51 +325,27 @@ document.getElementById("xpNeeded").innerText=xpNeeded
 
 clickUpgrades.forEach(u=>{
 let cost=getUpgradeCost(u)
+if(u.element){
 u.element.innerText=`${u.name} Lv.${u.level} (+${u.basePower}) - $${cost}`
+}
 })
 
 properties.forEach(p=>{
 let cost=getPropertyCost(p)
+if(p.element){
 p.element.innerText=`${p.name} x${p.owned} (+$${p.income}/s) - $${cost}`
+}
 })
 
-}
-
-/* LEADERBOARD */
-
-async function saveScore(){
-if(!supabase)return
-let name=document.getElementById("playerName").value
-if(!name)return
-
-await supabase.from("leaderboard").insert([{name,score:money}])
-loadLeaderboard()
-}
-
-async function loadLeaderboard(){
-if(!supabase)return
-
-let {data}=await supabase
-.from("leaderboard")
-.select("*")
-.order("score",{ascending:false})
-.limit(10)
-
-let text=""
-data.forEach((s,i)=>{
-text+=`${i+1}. ${s.name} - $${s.score}<br>`
-})
-
-document.getElementById("leaderboard").innerHTML=text
 }
 
 /* START */
 
 createButtons()
 loadGame()
-loadLeaderboard()
 update()
 
+})
 </script>
 
 </body>
