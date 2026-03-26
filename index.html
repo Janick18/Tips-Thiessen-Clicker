@@ -66,7 +66,6 @@ max-height:250px;
 overflow-y:auto;
 }
 
-/* particles */
 .faceParticle{
 position:absolute;
 width:40px;
@@ -115,7 +114,7 @@ animation:fall 1s linear forwards;
 
 <div class="panel">
 <h2>Progress</h2>
-<p>Long idle grind ⏳</p>
+<p>~8 hour grind ⏳</p>
 </div>
 
 </div>
@@ -143,28 +142,29 @@ let properties=[]
 
 /* FORMAT */
 function format(n){
+if(n>=1e12) return (n/1e12).toFixed(1)+"T"
 if(n>=1e9) return (n/1e9).toFixed(1)+"B"
 if(n>=1e6) return (n/1e6).toFixed(1)+"M"
 if(n>=1e3) return (n/1e3).toFixed(1)+"K"
 return Math.floor(n)
 }
 
-/* CREATE UPGRADES (HARD SCALING) */
-for(let i=0;i<20;i++){
+/* 40 UPGRADES (HEAVY SCALING) */
+for(let i=0;i<40;i++){
 upgrades.push({
 name:"Click Upgrade "+(i+1),
-baseCost:100 * Math.pow(3,i), // MUCH steeper
+baseCost: 200 * Math.pow(3.5,i), // VERY steep
 level:0,
 element:null
 })
 }
 
-/* CREATE PROPERTIES (HARD SCALING) */
-for(let i=0;i<20;i++){
+/* 40 PROPERTIES */
+for(let i=0;i<40;i++){
 properties.push({
 name:"Property "+(i+1),
-income:10 * Math.pow(2,i),
-cost:500 * Math.pow(3.2,i),
+income: 20 * Math.pow(2.2,i),
+cost: 1000 * Math.pow(3.8,i),
 owned:false,
 element:null
 })
@@ -172,11 +172,11 @@ element:null
 
 /* COST + POWER */
 function upgradeCost(u){
-return Math.floor(u.baseCost * Math.pow(2.2,u.level))
+return Math.floor(u.baseCost * Math.pow(2.6,u.level))
 }
 
 function upgradePower(u){
-return Math.floor((u.baseCost/80) * Math.pow(2.05,u.level))
+return Math.floor((u.baseCost/150) * Math.pow(2.4,u.level))
 }
 
 /* BUTTONS */
@@ -207,13 +207,14 @@ function buyUpgrade(i){
 let u=upgrades[i]
 let cost=upgradeCost(u)
 
+/* LOCK */
 if(i>0 && upgrades[i-1].level===0) return
 
 if(money>=cost){
 money-=cost
 u.level++
 clickPower+=upgradePower(u)
-addXP(15)
+addXP(20)
 update()
 }
 }
@@ -228,7 +229,7 @@ if(!p.owned && money>=p.cost){
 money-=p.cost
 p.owned=true
 mps+=p.income
-addXP(20)
+addXP(25)
 update()
 }
 }
@@ -272,7 +273,7 @@ xp+=a
 if(xp>=xpNeeded){
 xp-=xpNeeded
 level++
-xpNeeded=Math.floor(xpNeeded*1.3)
+xpNeeded=Math.floor(xpNeeded*1.35)
 }
 }
 
