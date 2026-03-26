@@ -29,6 +29,7 @@ border-radius:10px;
 #center{
 text-align:center;
 overflow-y:auto;
+position:relative;
 }
 
 #face{
@@ -47,6 +48,11 @@ background:linear-gradient(145deg,#f1c40f,#f39c12);
 cursor:pointer;
 }
 
+button:disabled{
+background:#555;
+cursor:not-allowed;
+}
+
 .stat{
 font-size:18px;
 margin:6px;
@@ -60,18 +66,21 @@ max-height:250px;
 overflow-y:auto;
 }
 
-.floating{
+/* 💥 falling faces */
+.faceParticle{
 position:absolute;
-color:#00ff99;
-font-weight:bold;
+width:40px;
+height:40px;
+border-radius:50%;
 pointer-events:none;
-animation:floatUp 1s ease-out forwards;
+animation:fall 1s linear forwards;
 }
 
-@keyframes floatUp{
-0%{opacity:1;}
-100%{opacity:0; transform:translateY(-60px);}
+@keyframes fall{
+0%{opacity:1; transform:translateY(0);}
+100%{opacity:0; transform:translateY(150px);}
 }
+
 </style>
 </head>
 
@@ -83,24 +92,19 @@ animation:floatUp 1s ease-out forwards;
 <h2>Player</h2>
 <div class="stat">Level: <span id="level">1</span></div>
 <div class="stat">XP: <span id="xp">0</span>/<span id="xpNeeded">100</span></div>
-
-<button onclick="saveGame()">Save</button>
-<button onclick="loadGame()">Load</button>
 </div>
 
 <div id="center" class="panel">
 
 <h1>Tips Thiessen Clicker</h1>
 
-<div class="stat">Money: $<span id="money">1000</span></div>
+<div class="stat">Money: $<span id="money">0</span></div>
 <div class="stat">Click Power: +<span id="clickPower">1</span></div>
 <div class="stat">Money/sec: $<span id="mps">0</span></div>
 
 <br>
 
 <img src="tips-thiessen.png" id="face">
-
-<p>Click to earn money</p>
 
 <h3>Click Upgrades</h3>
 <div id="clickUpgrades"></div>
@@ -111,54 +115,27 @@ animation:floatUp 1s ease-out forwards;
 </div>
 
 <div class="panel">
-<h2>Info</h2>
-<p>Idle Tycoon Game</p>
+<h2>Progress</h2>
+<p>Work your way up slowly 📈</p>
 </div>
 
 </div>
-
-<!-- 🔊 SOUND -->
-<audio id="clickSound" src="click.mp3"></audio>
 
 <script>
 
 document.addEventListener("DOMContentLoaded", function(){
 
-let money = 1000
+let money = 0
 let clickPower = 1
-let moneyPerSecond = 0
+let mps = 0
 
 let level = 1
 let xp = 0
 let xpNeeded = 100
 
 const face = document.getElementById("face")
-const clickSound = document.getElementById("clickSound")
 
-/* 🔥 CUSTOM NAMES */
-
-const upgradeNames = [
-"Finger Training","Quick Clicks","Mouse Mastery","Speed Tapping","Precision Clicking",
-"Reflex Boost","Click Efficiency","Turbo Finger","Hyper Clicking","Click Master",
-"Elite Tapper","Pro Clicking","Ultra Reflex","Click Overdrive","Extreme Speed",
-"Automation Assist","Click Engine","Neural Reflex","Cyber Fingers","AI Clicking",
-"Quantum Taps","Nano Speed","Mega Click","Super Tap","Hyperdrive Click",
-"Click Storm","Click Frenzy","Click Reactor","Click Machine","Click Dominator",
-"Click Overlord","Click God","Infinite Tap","Omni Click","Ultimate Click",
-"Ascended Click","Divine Touch","Cosmic Tap","Galactic Click","Universal Click"
-]
-
-const propertyNames = [
-"Lemonade Stand","Garage Office","Small House","Townhouse","Apartment",
-"Duplex","Mini Office","Office Building","Strip Mall","City Office",
-"Business Center","Hotel","Luxury Condo","Corporate Tower","Finance Hub",
-"Skyscraper","Resort","Private Island","Headquarters","Global Offices",
-"International Towers","Mega City Block","Tech Campus","Real Estate Firm",
-"Investment Group","Property Empire","Global Holdings","World Offices",
-"Continental HQ","Luxury Resorts","Mega Resorts","Sky Cities","Ocean Cities",
-"Floating Cities","Space Offices","Moon Base","Mars Colony","Planetary HQ",
-"Galactic Empire","Universal Network"
-]
+/* 🔥 PROGRESSION VALUES (balanced longer) */
 
 let upgrades=[]
 let properties=[]
@@ -166,54 +143,21 @@ let properties=[]
 for(let i=0;i<40;i++){
 
 upgrades.push({
-name:upgradeNames[i],
-power:1+i*5,
-baseCost:1000+i*3000,
-level:0,
+name:"Click Upgrade "+(i+1),
+power: Math.floor(1 + i*4), // +1, +5, +9...
+cost: 100 * Math.pow(1.8,i), // slower progression
+bought:false,
 element:null
 })
 
 properties.push({
-name:propertyNames[i],
-income:5+i*15,
-baseCost:500+i*5000,
-owned:0,
+name:"Property "+(i+1),
+income: Math.floor(2 + i*10),
+cost: 200 * Math.pow(1.9,i),
+owned:false,
 element:null
 })
 
-}
-
-/* COST */
-
-function upgradeCost(u){
-let m = u.level < 4 ? 1.15 : 1.4
-return Math.floor(u.baseCost * Math.pow(m,u.level))
-}
-
-function propertyCost(p){
-let m = p.owned < 4 ? 1.12 : 1.35
-return Math.floor(p.baseCost * Math.pow(m,p.owned))
-}
-
-/* ONLY BEST UPGRADE */
-
-function recalcClick(){
-let max = 1
-upgrades.forEach(u=>{
-if(u.level>0){
-max = Math.max(max,u.power)
-}
-})
-clickPower = max
-}
-
-/* CALC MPS */
-
-function calcMPS(){
-moneyPerSecond = 0
-properties.forEach(p=>{
-moneyPerSecond += p.income * p.owned
-})
 }
 
 /* BUTTONS */
@@ -239,90 +183,77 @@ pDiv.appendChild(b)
 
 }
 
-/* BUY */
+/* BUY WITH LOCK SYSTEM */
 
 function buyUpgrade(i){
-let u=upgrades[i]
-let cost=upgradeCost(u)
 
-if(money>=cost){
-money-=cost
-u.level++
-recalcClick()
+let u=upgrades[i]
+
+if(i>0 && !upgrades[i-1].bought) return
+
+if(!u.bought && money>=u.cost){
+money-=u.cost
+u.bought=true
+clickPower+=u.power
+addXP(25)
 update()
 }
 }
 
 function buyProperty(i){
-let p=properties[i]
-let cost=propertyCost(p)
 
-if(money>=cost){
-money-=cost
-p.owned++
-calcMPS()
+let p=properties[i]
+
+if(i>0 && !properties[i-1].owned) return
+
+if(!p.owned && money>=p.cost){
+money-=p.cost
+p.owned=true
+mps+=p.income
+addXP(15)
 update()
 }
 }
 
-/* CLICK */
+/* CLICK + PARTICLES */
 
-if(face){
 face.onclick=function(e){
 
-clickSound.currentTime = 0
-clickSound.play()
-
 money+=clickPower
-update()
+addXP(1)
 
-let float=document.createElement("div")
-float.className="floating"
-float.innerText="+"+clickPower
-float.style.left=e.pageX+"px"
-float.style.top=e.pageY+"px"
+for(let i=0;i<3;i++){
+let img=document.createElement("img")
+img.src="tips-thiessen.png"
+img.className="faceParticle"
 
-document.body.appendChild(float)
-setTimeout(()=>float.remove(),1000)
+img.style.left=(e.offsetX+100)+"px"
+img.style.top=(e.offsetY+100)+"px"
 
+document.getElementById("center").appendChild(img)
+setTimeout(()=>img.remove(),1000)
 }
+
+update()
 }
 
 /* PASSIVE */
 
 setInterval(()=>{
-money+=moneyPerSecond
+money+=mps
 update()
 },1000)
 
-/* SAVE */
+/* LEVEL */
 
-function saveGame(){
-let data={
-money,level,xp,xpNeeded,
-upgrades:upgrades.map(u=>u.level),
-properties:properties.map(p=>p.owned)
+function addXP(a){
+xp+=a
+
+if(xp>=xpNeeded){
+xp-=xpNeeded
+level++
+xpNeeded=Math.floor(xpNeeded*1.3)
 }
-localStorage.setItem("save",JSON.stringify(data))
-}
-
-/* LOAD */
-
-function loadGame(){
-let data=JSON.parse(localStorage.getItem("save"))
-if(!data)return
-
-money=data.money
-level=data.level
-xp=data.xp
-xpNeeded=data.xpNeeded
-
-data.upgrades.forEach((lvl,i)=>upgrades[i].level=lvl)
-data.properties.forEach((own,i)=>properties[i].owned=own)
-
-recalcClick()
-calcMPS()
-update()
 }
 
 /* UPDATE */
@@ -331,19 +262,33 @@ function update(){
 
 document.getElementById("money").innerText=Math.floor(money)
 document.getElementById("clickPower").innerText=clickPower
-document.getElementById("mps").innerText=moneyPerSecond
+document.getElementById("mps").innerText=mps
 
-upgrades.forEach(u=>{
+document.getElementById("level").innerText=level
+document.getElementById("xp").innerText=xp
+document.getElementById("xpNeeded").innerText=xpNeeded
+
+upgrades.forEach((u,i)=>{
 if(u.element){
-u.element.innerText=
-`${u.name} Lv.${u.level} (+${u.power}) - $${upgradeCost(u)}`
+
+let locked = (i>0 && !upgrades[i-1].bought)
+
+u.element.disabled = locked
+
+u.element.innerText =
+`${locked?"🔒 ":""}${u.name} (+${u.power}) - $${Math.floor(u.cost)}`
 }
 })
 
-properties.forEach(p=>{
+properties.forEach((p,i)=>{
 if(p.element){
-p.element.innerText=
-`${p.name} x${p.owned} (+$${p.income}/s) - $${propertyCost(p)}`
+
+let locked = (i>0 && !properties[i-1].owned)
+
+p.element.disabled = locked
+
+p.element.innerText =
+`${locked?"🔒 ":""}${p.name} (+$${p.income}/s) - $${Math.floor(p.cost)}`
 }
 })
 
@@ -352,9 +297,7 @@ p.element.innerText=
 /* START */
 
 createButtons()
-loadGame()
 update()
-setInterval(saveGame,5000)
 
 })
 
