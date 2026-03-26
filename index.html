@@ -115,7 +115,7 @@ animation:fall 1s linear forwards;
 
 <div class="panel">
 <h2>Progress</h2>
-<p>Balanced idle grind 📈</p>
+<p>Long idle grind ⏳</p>
 </div>
 
 </div>
@@ -149,34 +149,34 @@ if(n>=1e3) return (n/1e3).toFixed(1)+"K"
 return Math.floor(n)
 }
 
-/* CREATE UPGRADES */
+/* CREATE UPGRADES (HARD SCALING) */
 for(let i=0;i<20;i++){
 upgrades.push({
 name:"Click Upgrade "+(i+1),
-baseCost:50 * Math.pow(2,i),
+baseCost:100 * Math.pow(3,i), // MUCH steeper
 level:0,
 element:null
 })
 }
 
-/* CREATE PROPERTIES */
+/* CREATE PROPERTIES (HARD SCALING) */
 for(let i=0;i<20;i++){
 properties.push({
 name:"Property "+(i+1),
-income:10 * Math.pow(1.8,i),
-cost:200 * Math.pow(2,i),
+income:10 * Math.pow(2,i),
+cost:500 * Math.pow(3.2,i),
 owned:false,
 element:null
 })
 }
 
-/* COST + POWER (MATCHED SCALING) */
+/* COST + POWER */
 function upgradeCost(u){
-return Math.floor(u.baseCost * Math.pow(1.7,u.level))
+return Math.floor(u.baseCost * Math.pow(2.2,u.level))
 }
 
 function upgradePower(u){
-return Math.floor((u.baseCost/50) * Math.pow(1.65,u.level))
+return Math.floor((u.baseCost/80) * Math.pow(2.05,u.level))
 }
 
 /* BUTTONS */
@@ -207,14 +207,13 @@ function buyUpgrade(i){
 let u=upgrades[i]
 let cost=upgradeCost(u)
 
-/* LOCK SYSTEM */
 if(i>0 && upgrades[i-1].level===0) return
 
 if(money>=cost){
 money-=cost
 u.level++
 clickPower+=upgradePower(u)
-addXP(10)
+addXP(15)
 update()
 }
 }
@@ -229,7 +228,7 @@ if(!p.owned && money>=p.cost){
 money-=p.cost
 p.owned=true
 mps+=p.income
-addXP(15)
+addXP(20)
 update()
 }
 }
@@ -243,7 +242,6 @@ clickSound.play()
 money+=clickPower
 addXP(1)
 
-/* PERFECT POSITION FIX */
 const rect=center.getBoundingClientRect()
 
 for(let i=0;i<3;i++){
@@ -268,13 +266,13 @@ money+=mps
 update()
 },1000)
 
-/* LEVEL SYSTEM */
+/* LEVEL */
 function addXP(a){
 xp+=a
 if(xp>=xpNeeded){
 xp-=xpNeeded
 level++
-xpNeeded=Math.floor(xpNeeded*1.25)
+xpNeeded=Math.floor(xpNeeded*1.3)
 }
 }
 
