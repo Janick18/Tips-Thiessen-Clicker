@@ -66,7 +66,6 @@ max-height:250px;
 overflow-y:auto;
 }
 
-/* 💥 falling faces */
 .faceParticle{
 position:absolute;
 width:40px;
@@ -80,7 +79,6 @@ animation:fall 1s linear forwards;
 0%{opacity:1; transform:translateY(0);}
 100%{opacity:0; transform:translateY(150px);}
 }
-
 </style>
 </head>
 
@@ -116,10 +114,13 @@ animation:fall 1s linear forwards;
 
 <div class="panel">
 <h2>Progress</h2>
-<p>Work your way up slowly 📈</p>
+<p>Grind your empire 📈</p>
 </div>
 
 </div>
+
+<!-- 🔊 SOUND -->
+<audio id="clickSound" src="click.mp3"></audio>
 
 <script>
 
@@ -134,26 +135,42 @@ let xp = 0
 let xpNeeded = 100
 
 const face = document.getElementById("face")
-
-/* 🔥 PROGRESSION VALUES (balanced longer) */
+const clickSound = document.getElementById("clickSound")
 
 let upgrades=[]
 let properties=[]
 
+/* 🔥 BETTER SCALING */
+
 for(let i=0;i<40;i++){
+
+let power
+
+if(i < 10){
+  power = 1 + i*4
+}
+else if(i < 20){
+  power = 50 + (i-10)*50
+}
+else if(i < 30){
+  power = 1000 + (i-20)*1000
+}
+else{
+  power = 20000 + (i-30)*5000
+}
 
 upgrades.push({
 name:"Click Upgrade "+(i+1),
-power: Math.floor(1 + i*4), // +1, +5, +9...
-cost: 100 * Math.pow(1.8,i), // slower progression
+power: power,
+cost: Math.floor(100 * Math.pow(1.85,i)),
 bought:false,
 element:null
 })
 
 properties.push({
 name:"Property "+(i+1),
-income: Math.floor(2 + i*10),
-cost: 200 * Math.pow(1.9,i),
+income: Math.floor(5 + i*20),
+cost: Math.floor(200 * Math.pow(1.9,i)),
 owned:false,
 element:null
 })
@@ -183,7 +200,7 @@ pDiv.appendChild(b)
 
 }
 
-/* BUY WITH LOCK SYSTEM */
+/* BUY */
 
 function buyUpgrade(i){
 
@@ -215,20 +232,27 @@ update()
 }
 }
 
-/* CLICK + PARTICLES */
+/* CLICK */
 
 face.onclick=function(e){
+
+clickSound.currentTime = 0
+clickSound.play()
 
 money+=clickPower
 addXP(1)
 
+/* EXACT POSITION */
+const rect = face.getBoundingClientRect()
+
 for(let i=0;i<3;i++){
+
 let img=document.createElement("img")
 img.src="tips-thiessen.png"
 img.className="faceParticle"
 
-img.style.left=(e.offsetX+100)+"px"
-img.style.top=(e.offsetY+100)+"px"
+img.style.left=(e.clientX - rect.left - 20)+"px"
+img.style.top=(e.clientY - rect.top - 20)+"px"
 
 document.getElementById("center").appendChild(img)
 setTimeout(()=>img.remove(),1000)
@@ -248,7 +272,6 @@ update()
 
 function addXP(a){
 xp+=a
-
 if(xp>=xpNeeded){
 xp-=xpNeeded
 level++
@@ -270,25 +293,21 @@ document.getElementById("xpNeeded").innerText=xpNeeded
 
 upgrades.forEach((u,i)=>{
 if(u.element){
+let locked=(i>0 && !upgrades[i-1].bought)
+u.element.disabled=locked
 
-let locked = (i>0 && !upgrades[i-1].bought)
-
-u.element.disabled = locked
-
-u.element.innerText =
-`${locked?"🔒 ":""}${u.name} (+${u.power}) - $${Math.floor(u.cost)}`
+u.element.innerText=
+`${locked?"🔒 ":""}${u.name} (+${u.power}) - $${u.cost}`
 }
 })
 
 properties.forEach((p,i)=>{
 if(p.element){
+let locked=(i>0 && !properties[i-1].owned)
+p.element.disabled=locked
 
-let locked = (i>0 && !properties[i-1].owned)
-
-p.element.disabled = locked
-
-p.element.innerText =
-`${locked?"🔒 ":""}${p.name} (+$${p.income}/s) - $${Math.floor(p.cost)}`
+p.element.innerText=
+`${locked?"🔒 ":""}${p.name} (+$${p.income}/s) - $${p.cost}`
 }
 })
 
