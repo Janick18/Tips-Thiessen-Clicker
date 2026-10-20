@@ -1,331 +1,163 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-<title>Tips Thiessen Clicker</title>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="refresh" content="0; url=app.html">
-<link rel="canonical" href="app.html">
-<script>window.location.replace("app.html")</script>
-
-<style>
-body{
-font-family:Arial;
-background:#1b1f2a;
-color:white;
-margin:0;
-overflow:hidden;
-}
-
-#layout{
-display:grid;
-grid-template-columns:250px 1fr 250px;
-gap:10px;
-padding:10px;
-height:100vh;
-}
-
-.panel{
-background:#2a3040;
-padding:15px;
-border-radius:10px;
-}
-
-#center{
-text-align:center;
-overflow-y:auto;
-position:relative;
-}
-
-#face{
-width:240px;
-border-radius:20px;
-cursor:pointer;
-}
-
-button{
-width:220px;
-padding:10px;
-margin:6px;
-border:none;
-border-radius:8px;
-background:linear-gradient(145deg,#f1c40f,#f39c12);
-cursor:pointer;
-}
-
-button:disabled{
-background:#555;
-cursor:not-allowed;
-}
-
-.stat{
-font-size:18px;
-margin:6px;
-background:#1e2433;
-padding:6px;
-border-radius:6px;
-}
-
-#clickUpgrades, #propertyUpgrades{
-max-height:250px;
-overflow-y:auto;
-}
-
-.faceParticle{
-position:absolute;
-width:40px;
-height:40px;
-border-radius:50%;
-pointer-events:none;
-animation:fall 1s linear forwards;
-}
-
-@keyframes fall{
-0%{opacity:1;}
-100%{opacity:0; transform:translateY(150px);}
-}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090b17">
+  <meta name="description" content="Build a viral empire in Tips Thiessen Clicker.">
+  <title>Tips Thiessen: Internet Empire</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23ffd166'/%3E%3Ctext x='50%25' y='56%25' text-anchor='middle' font-size='36' font-family='Arial' font-weight='700' fill='%2319120a'%3ET%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
 </head>
-
 <body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">T</span>
+      <span class="brand-copy">
+        <strong>Tips Thiessen</strong>
+        <small>Internet Empire</small>
+      </span>
+    </div>
 
-<div id="layout">
+    <div class="goal-progress">
+      <div class="goal-labels">
+        <span>The Internet Crown</span>
+        <strong id="goalText">0%</strong>
+      </div>
+      <div class="progress-track" role="progressbar" aria-label="Progress toward the Internet Crown" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="goalTrack">
+        <div class="progress-fill" id="goalFill"></div>
+      </div>
+    </div>
 
-<div class="panel">
-<h2>Player</h2>
-<div class="stat">Level: <span id="level">1</span></div>
-<div class="stat">XP: <span id="xp">0</span>/<span id="xpNeeded">100</span></div>
-</div>
+    <div class="top-actions">
+      <button class="icon-button" id="musicToggle" type="button" aria-label="Mute music">♫</button>
+      <button class="icon-button" id="sfxToggle" type="button" aria-label="Mute sound effects">♪</button>
+      <button class="icon-button" id="settings" type="button" aria-label="Open settings" aria-haspopup="dialog" aria-controls="settingsPanel" aria-expanded="false">⚙</button>
+    </div>
+  </header>
 
-<div id="center" class="panel">
+  <main class="game-shell">
+    <aside class="panel side-panel">
+      <p class="eyebrow">Your profile</p>
+      <h2>Creator status</h2>
 
-<h1>Tips Thiessen Clicker</h1>
+      <div class="level-badge">
+        <span class="level-number" id="level">1</span>
+        <span>
+          <strong id="rank">New Face</strong>
+          <small>Creator level</small>
+        </span>
+      </div>
 
-<div class="stat">Money: $<span id="money">0</span></div>
-<div class="stat">Click Power: +<span id="clickPower">1</span></div>
-<div class="stat">Money/sec: $<span id="mps">0</span></div>
+      <div class="xp-wrap">
+        <div class="xp-labels">
+          <span>Experience</span>
+          <span id="xpText">0 / 70 XP</span>
+        </div>
+        <div class="progress-track" role="progressbar" aria-label="Experience progress" aria-valuemin="0" aria-valuemax="70" aria-valuenow="0" id="xpTrack">
+          <div class="progress-fill" id="xpFill"></div>
+        </div>
+      </div>
 
-<br>
+      <div class="stat-grid">
+        <div class="stat-card">
+          <span>Run time</span>
+          <strong id="elapsed">0m 0s</strong>
+        </div>
+        <div class="stat-card">
+          <span>Total clicks</span>
+          <strong id="clicks">0</strong>
+        </div>
+        <div class="stat-card">
+          <span>Lifetime</span>
+          <strong id="lifetime">$0</strong>
+        </div>
+        <div class="stat-card">
+          <span>Businesses</span>
+          <strong id="buildings">0</strong>
+        </div>
+      </div>
 
-<img src="tips-thiessen.png" id="face">
+      <div class="section-divider"></div>
+      <p class="eyebrow">Road to the crown</p>
+      <h2>Milestones</h2>
+      <ul class="milestone-list" id="milestones"></ul>
+    </aside>
 
-<h3>Click Upgrades</h3>
-<div id="clickUpgrades"></div>
+    <section class="panel click-stage" aria-labelledby="stageTitle">
+      <div class="money-label" id="stageTitle">Current balance</div>
+      <h1 class="money-value" id="money">$0</h1>
+      <div class="income-line" id="income">+$0 per second</div>
 
-<h3>Properties</h3>
-<div id="propertyUpgrades"></div>
+      <button class="face-button" id="faceButton" type="button" aria-label="Click Tips to earn money">
+        <img src="tips-thiessen.png" alt="Tips Thiessen">
+      </button>
 
-</div>
+      <p class="click-hint">Click Tips or press <strong>Space</strong> to earn</p>
+      <div class="click-power-pill">
+        <span aria-hidden="true">⚡</span>
+        <span id="clickPower">+$1 per click</span>
+      </div>
+    </section>
 
-<div class="panel">
-<h2>Progress</h2>
-<p>~8 hour grind ⏳</p>
-</div>
+    <section class="panel shop-panel" aria-label="Empire shop">
+      <div class="shop-header">
+        <div>
+          <p class="eyebrow">Grow the empire</p>
+          <h2>Marketplace</h2>
+        </div>
+        <div class="bulk-picker" role="group" aria-label="Purchase amount">
+          <button class="bulk-button active" type="button" data-bulk="1">×1</button>
+          <button class="bulk-button" type="button" data-bulk="10">×10</button>
+          <button class="bulk-button" type="button" data-bulk="max">MAX</button>
+        </div>
+      </div>
 
-</div>
+      <div class="tabs" role="tablist" aria-label="Shop categories">
+        <button class="tab active" type="button" role="tab" aria-selected="true" data-tab="producers">Businesses</button>
+        <button class="tab" type="button" role="tab" aria-selected="false" data-tab="upgrades">Click boosts</button>
+      </div>
+      <div class="shop-list" id="shopList"></div>
+    </section>
+  </main>
 
-<!-- Sounds -->
-<audio id="clickSound" src="click.mp3"></audio>
-<audio id="bgMusic" src="background music.mp3" loop></audio>
+  <section class="settings-popover" id="settingsPanel" role="dialog" aria-label="Game settings" hidden>
+    <p class="eyebrow">Preferences</p>
+    <h2>Settings</h2>
+    <label class="setting-row">
+      <span>Music</span>
+      <input id="musicVolume" type="range" min="0" max="100" value="28">
+      <span id="musicValue">28%</span>
+    </label>
+    <label class="setting-row">
+      <span>Clicks</span>
+      <input id="sfxVolume" type="range" min="0" max="100" value="55">
+      <span id="sfxValue">55%</span>
+    </label>
+    <div class="settings-actions">
+      <button class="small-button" id="saveButton" type="button">Save now</button>
+      <button class="small-button" id="exportButton" type="button">Export save</button>
+      <button class="small-button" id="importButton" type="button">Import save</button>
+      <button class="small-button danger" id="resetButton" type="button">Reset game</button>
+    </div>
+  </section>
 
-<script>
+  <div class="toast-stack" id="toastStack" aria-live="polite"></div>
 
-document.addEventListener("DOMContentLoaded", function(){
+  <section class="modal" id="completeModal" role="dialog" aria-modal="true" aria-labelledby="completeTitle" hidden>
+    <div class="modal-card">
+      <div class="trophy" aria-hidden="true">👑</div>
+      <p class="eyebrow">Empire complete</p>
+      <h2 id="completeTitle">You claimed the Internet Crown!</h2>
+      <p>You turned a single click into a worldwide media empire. Your run took <strong id="finalTime">0h 0m</strong>. You can keep growing forever.</p>
+      <button id="continueButton" type="button">Keep playing</button>
+    </div>
+  </section>
 
-let money = 0
-let clickPower = 1
-let mps = 0
-
-let level = 1
-let xp = 0
-let xpNeeded = 100
-
-const face = document.getElementById("face")
-const center = document.getElementById("center")
-const clickSound = document.getElementById("clickSound")
-const bgMusic = document.getElementById("bgMusic")
-
-/* Start music (may require click) */
-bgMusic.volume = 0.4
-bgMusic.play().catch(()=>{})
-
-let upgrades=[]
-let properties=[]
-
-function format(n){
-if(n>=1e12) return (n/1e12).toFixed(1)+"T"
-if(n>=1e9) return (n/1e9).toFixed(1)+"B"
-if(n>=1e6) return (n/1e6).toFixed(1)+"M"
-if(n>=1e3) return (n/1e3).toFixed(1)+"K"
-return Math.floor(n)
-}
-
-/* UPGRADES */
-for(let i=0;i<40;i++){
-upgrades.push({
-name:"Click Upgrade "+(i+1),
-baseCost: 200 * Math.pow(3.5,i),
-level:0,
-element:null
-})
-}
-
-/* PROPERTIES */
-for(let i=0;i<40;i++){
-properties.push({
-name:"Property "+(i+1),
-income: 20 * Math.pow(2.2,i),
-cost: 1000 * Math.pow(3.8,i),
-owned:false,
-element:null
-})
-}
-
-function upgradeCost(u){
-return Math.floor(u.baseCost * Math.pow(2.6,u.level))
-}
-
-function upgradePower(u){
-return Math.floor((u.baseCost/150) * Math.pow(2.4,u.level))
-}
-
-function createButtons(){
-
-const cDiv=document.getElementById("clickUpgrades")
-const pDiv=document.getElementById("propertyUpgrades")
-
-upgrades.forEach((u,i)=>{
-let b=document.createElement("button")
-b.onclick=()=>buyUpgrade(i)
-u.element=b
-cDiv.appendChild(b)
-})
-
-properties.forEach((p,i)=>{
-let b=document.createElement("button")
-b.onclick=()=>buyProperty(i)
-p.element=b
-pDiv.appendChild(b)
-})
-
-}
-
-function buyUpgrade(i){
-
-let u=upgrades[i]
-let cost=upgradeCost(u)
-
-if(i>0 && upgrades[i-1].level===0) return
-
-if(money>=cost){
-money-=cost
-u.level++
-clickPower+=upgradePower(u)
-addXP(20)
-update()
-}
-}
-
-function buyProperty(i){
-
-let p=properties[i]
-
-if(i>0 && !properties[i-1].owned) return
-
-if(!p.owned && money>=p.cost){
-money-=p.cost
-p.owned=true
-mps+=p.income
-addXP(25)
-update()
-}
-}
-
-/* CLICK */
-face.onclick=function(e){
-
-/* ensures music starts after user interaction */
-bgMusic.play().catch(()=>{})
-
-clickSound.currentTime=0
-clickSound.play()
-
-money+=clickPower
-addXP(1)
-
-const rect=center.getBoundingClientRect()
-
-for(let i=0;i<3;i++){
-
-let img=document.createElement("img")
-img.src="tips-thiessen.png"
-img.className="faceParticle"
-
-img.style.left=(e.clientX - rect.left - 20)+"px"
-img.style.top=(e.clientY - rect.top - 20)+"px"
-
-center.appendChild(img)
-setTimeout(()=>img.remove(),1000)
-}
-
-update()
-}
-
-/* PASSIVE */
-setInterval(()=>{
-money+=mps
-update()
-},1000)
-
-/* LEVEL */
-function addXP(a){
-xp+=a
-if(xp>=xpNeeded){
-xp-=xpNeeded
-level++
-xpNeeded=Math.floor(xpNeeded*1.35)
-}
-}
-
-/* UPDATE */
-function update(){
-
-document.getElementById("money").innerText=format(money)
-document.getElementById("clickPower").innerText=format(clickPower)
-document.getElementById("mps").innerText=format(mps)
-
-document.getElementById("level").innerText=level
-document.getElementById("xp").innerText=xp
-document.getElementById("xpNeeded").innerText=xpNeeded
-
-upgrades.forEach((u,i)=>{
-if(u.element){
-let locked=(i>0 && upgrades[i-1].level===0)
-u.element.disabled=locked
-
-u.element.innerText=
-`${locked?"🔒 ":""}${u.name} Lv.${u.level} (+${format(upgradePower(u))}) - $${format(upgradeCost(u))}`
-}
-})
-
-properties.forEach((p,i)=>{
-if(p.element){
-let locked=(i>0 && !properties[i-1].owned)
-p.element.disabled=locked
-
-p.element.innerText=
-`${locked?"🔒 ":""}${p.name} (+${format(p.income)}/s) - $${format(p.cost)}`
-}
-})
-
-}
-
-createButtons()
-update()
-
-})
-
-</script>
-
+  <audio id="bgMusic" src="backround music.mp3" preload="auto" loop></audio>
+  <script src="game.js"></script>
 </body>
 </html>

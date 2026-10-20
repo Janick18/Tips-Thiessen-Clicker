@@ -598,6 +598,11 @@ h2 {
   transform: translateX(-3px);
 }
 
+.shop-card.affordable {
+  border-color: rgba(255, 209, 102, 0.28);
+  box-shadow: inset 0 0 0 1px rgba(255, 209, 102, 0.08);
+}
+
 .shop-card:disabled {
   cursor: not-allowed;
   opacity: 0.48;
@@ -858,6 +863,12 @@ input[type="range"] {
 
   .shop-card {
     grid-template-columns: 44px minmax(0, 1fr) auto;
+  }
+
+  .settings-popover {
+    left: 12px;
+    right: 12px;
+    width: auto;
   }
 }
 

@@ -34,14 +34,16 @@
   ];
 
   const MILESTONES = [
-    { at: 1e3, name: "First Thousand" },
-    { at: 1e5, name: "Six Figures" },
-    { at: 1e7, name: "Millionaire Energy" },
-    { at: 1e9, name: "The Billion Club" },
-    { at: 1e11, name: "Media Royalty" },
-    { at: 1e13, name: "Orbit Achieved" },
-    { at: 1e15, name: "Attention Monopoly" },
-    { at: FINAL_GOAL, name: "The Internet Crown" }
+    { at: 1e3, name: "First Thousand", boost: true },
+    { at: 1e5, name: "Six Figures", boost: true },
+    { at: 1e7, name: "Millionaire Energy", boost: true },
+    { at: 1e9, name: "The Billion Club", boost: true },
+    { at: 1e11, name: "Media Royalty", boost: true },
+    { at: 1e13, name: "Orbit Achieved", boost: true },
+    { at: 1e15, name: "Attention Monopoly", boost: true },
+    { at: 1e16, name: "Worldwide Famous", boost: false },
+    { at: 3e16, name: "Beyond Viral", boost: false },
+    { at: FINAL_GOAL, name: "The Internet Crown", boost: true }
   ];
 
   const DEFAULT_STATE = {
@@ -71,6 +73,7 @@
   let saveAccumulator = 0;
   let clickSoundIndex = 0;
   let audioStarted = false;
+  let persistEnabled = true;
 
   const $ = (selector) => document.querySelector(selector);
   const dom = {
@@ -83,6 +86,8 @@
     xpFill: $("#xpFill"),
     goalText: $("#goalText"),
     goalFill: $("#goalFill"),
+    goalTrack: $("#goalTrack"),
+    xpTrack: $("#xpTrack"),
     elapsed: $("#elapsed"),
     clicks: $("#clicks"),
     lifetime: $("#lifetime"),
@@ -131,6 +136,7 @@
   }
 
   function saveGame(showMessage = false) {
+    if (!persistEnabled) return;
     state.lastSave = Date.now();
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify({ ...state, version: GAME_VERSION }));
@@ -140,8 +146,14 @@
     }
   }
 
+  function persistSoon() {
+    saveGame(false);
+  }
+
   function getMilestoneMultiplier() {
-    const claimed = state.milestones.filter(Boolean).length;
+    const claimed = MILESTONES.reduce((count, milestone, index) => (
+      count + ((milestone.boost && state.milestones[index]) ? 1 : 0)
+    ), 0);
     return Math.pow(1.5, claimed);
   }
 
@@ -184,14 +196,17 @@
     MILESTONES.forEach((milestone, index) => {
       if (!state.milestones[index] && state.totalEarned >= milestone.at) {
         state.milestones[index] = true;
-        toast(milestone.name, index === MILESTONES.length - 1 ? "You conquered the internet!" : "All income permanently boosted by 50%.");
+        const message = index === MILESTONES.length - 1
+          ? "You conquered the internet!"
+          : (milestone.boost ? "All income permanently boosted by 50%." : "The empire keeps expanding.");
+        toast(milestone.name, message);
       }
     });
 
     if (!state.completed && state.totalEarned >= FINAL_GOAL) {
       state.completed = true;
       dom.finalTime.textContent = formatTime(state.activeSeconds);
-      dom.completeModal.hidden = false;
+      showCompleteModal();
       saveGame();
     }
   }
@@ -201,14 +216,17 @@
     const base = PRODUCERS[index].cost;
     if (amount === "max") amount = maxAffordable(index);
     if (amount <= 0) return 0;
-    return base * Math.pow(1.15, owned) * ((Math.pow(1.15, amount) - 1) / 0.15);
+    const raw = base * Math.pow(1.15, owned) * ((Math.pow(1.15, amount) - 1) / 0.15);
+    return Math.ceil(raw - 1e-9);
   }
 
   function maxAffordable(index) {
     const owned = state.producers[index];
     const firstCost = PRODUCERS[index].cost * Math.pow(1.15, owned);
     if (state.money < firstCost) return 0;
-    return Math.max(0, Math.floor(Math.log(1 + (state.money * 0.15) / firstCost) / Math.log(1.15)));
+    let amount = Math.max(0, Math.floor(Math.log(1 + (state.money * 0.15) / firstCost) / Math.log(1.15)));
+    while (amount > 0 && producerCost(index, amount) > state.money) amount -= 1;
+    return amount;
   }
 
   function buyProducer(index) {
@@ -257,8 +275,8 @@
     const pop = document.createElement("span");
     pop.className = "click-pop";
     pop.textContent = `+$${formatNumber(amount)}`;
-    pop.style.left = `${x}px`;
-    pop.style.top = `${y}px`;
+    pop.style.left = `${x + (Math.random() * 120 - 60)}px`;
+    pop.style.top = `${y - 36 - Math.random() * 48}px`;
     document.body.appendChild(pop);
     setTimeout(() => pop.remove(), 900);
   }
@@ -277,7 +295,7 @@
     sound.pause();
     sound.currentTime = 0;
     sound.volume = state.sfxVolume;
-    sound.playbackRate = 1.7;
+    sound.playbackRate = 2.4;
     sound.play().catch(() => {});
   }
 
@@ -301,7 +319,7 @@
   function formatNumber(value) {
     if (!Number.isFinite(value)) return "∞";
     if (value < 1000) {
-      if (value < 10 && value % 1 !== 0) return value.toFixed(1);
+      if (value < 10 && Math.abs(value - Math.round(value)) > 0.05) return value.toFixed(1);
       return Math.floor(value).toLocaleString("en-US");
     }
     const units = [
@@ -335,9 +353,18 @@
     dom.level.textContent = state.level;
     dom.rank.textContent = getRank();
     dom.xpText.textContent = `${formatNumber(state.xp)} / ${formatNumber(needed)} XP`;
-    dom.xpFill.style.width = `${Math.min(100, (state.xp / needed) * 100)}%`;
-    dom.goalText.textContent = `${(progress * 100).toFixed(progress < 0.1 ? 1 : 0)}%`;
-    dom.goalFill.style.width = `${progress * 100}%`;
+    const xpPercent = Math.min(100, (state.xp / needed) * 100);
+    dom.xpFill.style.width = `${xpPercent}%`;
+    if (dom.xpTrack) {
+      dom.xpTrack.setAttribute("aria-valuenow", String(Math.floor(state.xp)));
+      dom.xpTrack.setAttribute("aria-valuemax", String(needed));
+    }
+    const goalPercent = progress * 100;
+    dom.goalText.textContent = `${goalPercent.toFixed(progress < 0.1 ? 1 : 0)}%`;
+    dom.goalFill.style.width = `${goalPercent}%`;
+    if (dom.goalTrack) {
+      dom.goalTrack.setAttribute("aria-valuenow", String(Math.floor(goalPercent)));
+    }
     dom.elapsed.textContent = formatTime(state.activeSeconds);
     dom.clicks.textContent = formatNumber(state.totalClicks);
     dom.lifetime.textContent = `$${formatNumber(state.totalEarned)}`;
@@ -381,7 +408,7 @@
             <span class="shop-copy">
               <span class="shop-name">${locked ? `Unlock at $${formatNumber(item.unlock)}` : item.name}</span>
               <span class="shop-desc">${locked ? "Keep building your lifetime earnings" : `+$${formatNumber(income)}/sec each`}</span>
-              <span class="owned-badge">OWNED ${state.producers[index]}</span>
+              ${locked ? "" : `<span class="owned-badge">OWNED ${state.producers[index]}</span>`}
             </span>
             <span class="shop-price">${locked ? "" : `${amount || 1}× $${formatNumber(cost)}`}</span>
           </button>
@@ -406,6 +433,57 @@
       }).join("");
     }
     renderMilestones();
+  }
+
+  function refreshShopState() {
+    if (!dom.shopList.children.length) {
+      renderShop();
+      return;
+    }
+
+    if (state.tab === "producers") {
+      for (let index = 0; index < PRODUCERS.length; index += 1) {
+        const item = PRODUCERS[index];
+        const card = dom.shopList.querySelector(`[data-producer="${index}"]`);
+        if (!card) {
+          renderShop();
+          return;
+        }
+        const locked = state.totalEarned < item.unlock;
+        const amount = state.bulk === "max" ? maxAffordable(index) : state.bulk;
+        const cost = producerCost(index, amount || 1);
+        const disabled = locked || amount === 0 || state.money < cost;
+        if (card.classList.contains("locked") !== locked) {
+          renderShop();
+          return;
+        }
+        card.disabled = disabled;
+        card.classList.toggle("affordable", !disabled);
+        const price = card.querySelector(".shop-price");
+        const owned = card.querySelector(".owned-badge");
+        if (price && !locked) price.textContent = `${amount || 1}× $${formatNumber(cost)}`;
+        if (owned) owned.textContent = `OWNED ${state.producers[index]}`;
+      }
+      return;
+    }
+
+    for (let index = 0; index < CLICK_UPGRADES.length; index += 1) {
+      const item = CLICK_UPGRADES[index];
+      const card = dom.shopList.querySelector(`[data-upgrade="${index}"]`);
+      if (!card) {
+        renderShop();
+        return;
+      }
+      const locked = state.totalEarned < item.unlock;
+      const owned = state.upgrades[index];
+      const disabled = locked || owned || state.money < item.cost;
+      if (card.classList.contains("locked") !== locked || (owned && !card.querySelector(".owned-badge"))) {
+        renderShop();
+        return;
+      }
+      card.disabled = disabled;
+      card.classList.toggle("affordable", !disabled);
+    }
   }
 
   function toast(title, message) {
@@ -438,9 +516,22 @@
     state.lastSave = now;
   }
 
+  function encodeSave(data) {
+    return btoa(encodeURIComponent(JSON.stringify(data)));
+  }
+
+  function decodeSave(encoded) {
+    const trimmed = encoded.trim();
+    try {
+      return JSON.parse(decodeURIComponent(atob(trimmed)));
+    } catch {
+      return JSON.parse(decodeURIComponent(escape(atob(trimmed))));
+    }
+  }
+
   function exportSave() {
     saveGame();
-    const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(state))));
+    const encoded = encodeSave(state);
     if (navigator.clipboard?.writeText) {
       navigator.clipboard.writeText(encoded)
         .then(() => toast("Save copied", "Keep the code somewhere safe."))
@@ -454,8 +545,9 @@
     const encoded = window.prompt("Paste your save code:");
     if (!encoded) return;
     try {
-      const parsed = JSON.parse(decodeURIComponent(escape(atob(encoded.trim()))));
+      const parsed = decodeSave(encoded);
       if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.producers)) throw new Error("Invalid save");
+      persistEnabled = false;
       localStorage.setItem(SAVE_KEY, JSON.stringify(parsed));
       window.location.reload();
     } catch {
@@ -465,41 +557,82 @@
 
   function resetGame() {
     if (!window.confirm("Reset all progress? This cannot be undone unless you exported your save.")) return;
+    persistEnabled = false;
     localStorage.removeItem(SAVE_KEY);
     window.location.reload();
+  }
+
+  function setSettingsOpen(open) {
+    dom.settingsPanel.hidden = !open;
+    dom.settings.setAttribute("aria-expanded", String(open));
+  }
+
+  function showCompleteModal() {
+    dom.completeModal.hidden = false;
+    $("#continueButton")?.focus();
+  }
+
+  function isTypingTarget(target) {
+    if (!target || !(target instanceof Element)) return false;
+    const tag = target.tagName;
+    return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target.isContentEditable;
   }
 
   function bindEvents() {
     dom.face.addEventListener("click", handleClick);
 
     dom.settings.addEventListener("click", () => {
-      dom.settingsPanel.hidden = !dom.settingsPanel.hidden;
+      setSettingsOpen(dom.settingsPanel.hidden);
     });
 
     document.addEventListener("pointerdown", (event) => {
       startAudio();
       if (!dom.settingsPanel.hidden && !dom.settingsPanel.contains(event.target) && event.target !== dom.settings) {
-        dom.settingsPanel.hidden = true;
+        setSettingsOpen(false);
       }
-    }, { once: false });
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        if (!dom.settingsPanel.hidden) {
+          setSettingsOpen(false);
+          return;
+        }
+        if (!dom.completeModal.hidden) {
+          dom.completeModal.hidden = true;
+        }
+        return;
+      }
+
+      if (event.key !== " " && event.key !== "Enter") return;
+      if (isTypingTarget(event.target)) return;
+      if (event.target instanceof HTMLButtonElement && event.target !== dom.face) return;
+      event.preventDefault();
+      handleClick(event);
+    });
 
     dom.musicToggle.addEventListener("click", () => {
       state.musicMuted = !state.musicMuted;
       applyAudioSettings();
       if (!state.musicMuted) dom.bgMusic.play().catch(() => {});
+      persistSoon();
     });
 
     dom.sfxToggle.addEventListener("click", () => {
       state.sfxMuted = !state.sfxMuted;
       applyAudioSettings();
+      persistSoon();
     });
 
     dom.musicVolume.addEventListener("input", (event) => {
       state.musicVolume = Number(event.target.value) / 100;
       state.musicMuted = false;
       applyAudioSettings();
+      startAudio();
       dom.bgMusic.play().catch(() => {});
     });
+
+    dom.musicVolume.addEventListener("change", persistSoon);
 
     dom.sfxVolume.addEventListener("input", (event) => {
       state.sfxVolume = Number(event.target.value) / 100;
@@ -507,10 +640,13 @@
       applyAudioSettings();
     });
 
+    dom.sfxVolume.addEventListener("change", persistSoon);
+
     document.querySelectorAll(".tab").forEach((tab) => {
       tab.addEventListener("click", () => {
         state.tab = tab.dataset.tab;
         renderShop();
+        persistSoon();
       });
     });
 
@@ -518,6 +654,7 @@
       button.addEventListener("click", () => {
         state.bulk = button.dataset.bulk === "max" ? "max" : Number(button.dataset.bulk);
         renderShop();
+        persistSoon();
       });
     });
 
@@ -553,17 +690,18 @@
 
     if (uiAccumulator >= 0.1) {
       updateUI();
+      refreshShopState();
       uiAccumulator = 0;
     }
     if (saveAccumulator >= 5) {
       saveGame();
-      renderShop();
       saveAccumulator = 0;
     }
     requestAnimationFrame(gameLoop);
   }
 
   grantOfflineProgress();
+  checkMilestones();
   bindEvents();
   applyAudioSettings();
   renderShop();
