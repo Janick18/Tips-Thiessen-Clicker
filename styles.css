@@ -364,6 +364,97 @@ h2 {
   background: var(--green);
 }
 
+.leaderboard-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.leaderboard-heading h2 {
+  margin-bottom: 0;
+}
+
+.leaderboard-heading .small-button {
+  min-width: auto;
+  padding: 5px 8px;
+}
+
+.leaderboard-status {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+.leaderboard-list {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.leaderboard-row.you {
+  border: 1px solid rgba(255, 209, 102, 0.28);
+  background: rgba(255, 209, 102, 0.08);
+}
+
+.leaderboard-place {
+  color: var(--gold);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.leaderboard-copy {
+  min-width: 0;
+}
+
+.leaderboard-copy strong,
+.leaderboard-copy small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leaderboard-copy small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 0.65rem;
+}
+
+.leaderboard-score {
+  color: var(--cyan);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-align: right;
+}
+
+.name-row {
+  grid-template-columns: 78px 1fr;
+}
+
+.name-row input[type="text"] {
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.28);
+}
+
 .click-stage {
   position: sticky;
   top: 98px;

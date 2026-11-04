@@ -2,6 +2,8 @@
   "use strict";
 
   const SAVE_KEY = "tips-thiessen-clicker-v2";
+  const PLAYER_ID_KEY = "tips-thiessen-player-id";
+  const PLAYER_NAME_KEY = "tips-thiessen-player-name";
   const GAME_VERSION = 2;
   const FINAL_GOAL = 1e17;
   const OFFLINE_CAP_SECONDS = 8 * 60 * 60;
@@ -74,6 +76,10 @@
   let clickSoundIndex = 0;
   let audioStarted = false;
   let persistEnabled = true;
+  let playerId = getPlayerId();
+  let playerName = localStorage.getItem(PLAYER_NAME_KEY) || "";
+  let leaderboardTimer = 0;
+  let lastLeaderboardPost = 0;
 
   const $ = (selector) => document.querySelector(selector);
   const dom = {
@@ -106,7 +112,11 @@
     bgMusic: $("#bgMusic"),
     toastStack: $("#toastStack"),
     completeModal: $("#completeModal"),
-    finalTime: $("#finalTime")
+    finalTime: $("#finalTime"),
+    playerName: $("#playerName"),
+    leaderboardList: $("#leaderboardList"),
+    leaderboardStatus: $("#leaderboardStatus"),
+    refreshLeaderboard: $("#refreshLeaderboard")
   };
 
   const clickSounds = Array.from({ length: 6 }, () => {
@@ -148,6 +158,126 @@
 
   function persistSoon() {
     saveGame(false);
+  }
+
+  function getPlayerId() {
+    try {
+      let id = localStorage.getItem(PLAYER_ID_KEY);
+      if (!id || !/^[A-Za-z0-9_-]{8,64}$/.test(id)) {
+        id = (crypto.randomUUID && crypto.randomUUID().replace(/-/g, "")) || `p${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+        localStorage.setItem(PLAYER_ID_KEY, id);
+      }
+      return id;
+    } catch {
+      return `p${Date.now().toString(36)}`;
+    }
+  }
+
+  function getLatestMilestone() {
+    let latest = "Getting started";
+    MILESTONES.forEach((milestone, index) => {
+      if (state.milestones[index]) latest = milestone.name;
+    });
+    if (state.completed) latest = "The Internet Crown";
+    return latest;
+  }
+
+  function crownProgress() {
+    return Math.max(0, Math.min(100, Math.log10(state.totalEarned + 1) / Math.log10(FINAL_GOAL + 1) * 100));
+  }
+
+  function setLeaderboardStatus(text) {
+    if (dom.leaderboardStatus) dom.leaderboardStatus.textContent = text;
+  }
+
+  function renderLeaderboard(payload) {
+    if (!dom.leaderboardList) return;
+    const players = payload.players || [];
+    const you = payload.you;
+    if (!players.length) {
+      dom.leaderboardList.innerHTML = "";
+      setLeaderboardStatus(playerName ? "You're first. Keep clicking and others will appear here." : "Set a nickname in settings to join.");
+      return;
+    }
+
+    const rows = players.slice(0, 12).map((row) => {
+      const mine = row.id === playerId;
+      const badge = row.completed ? "Internet Crown" : row.milestone;
+      return `
+        <li class="leaderboard-row ${mine ? "you" : ""}">
+          <span class="leaderboard-place">#${row.rank}</span>
+          <span class="leaderboard-copy">
+            <strong>${escapeHtml(row.name)}${mine ? " (you)" : ""}</strong>
+            <small>${escapeHtml(badge)} · ${formatTime(row.activeSeconds)}</small>
+          </span>
+          <span class="leaderboard-score">${row.progress.toFixed(row.progress < 10 ? 1 : 0)}%<br>$${formatNumber(row.totalEarned)}</span>
+        </li>
+      `;
+    }).join("");
+
+    let extra = "";
+    if (you && you.rank > 12) {
+      extra = `
+        <li class="leaderboard-row you">
+          <span class="leaderboard-place">#${you.rank}</span>
+          <span class="leaderboard-copy">
+            <strong>${escapeHtml(you.name)} (you)</strong>
+            <small>${escapeHtml(you.completed ? "Internet Crown" : you.milestone)}</small>
+          </span>
+          <span class="leaderboard-score">${you.progress.toFixed(you.progress < 10 ? 1 : 0)}%<br>$${formatNumber(you.totalEarned)}</span>
+        </li>
+      `;
+    }
+
+    dom.leaderboardList.innerHTML = rows + extra;
+    setLeaderboardStatus(you ? `You are #${you.rank} of ${Math.max(players.length, you.rank)}.` : `${players.length} creator${players.length === 1 ? "" : "s"} on the board.`);
+  }
+
+  async function fetchLeaderboard() {
+    try {
+      const response = await fetch(`/api/leaderboard?id=${encodeURIComponent(playerId)}`);
+      const payload = await response.json();
+      if (!payload.configured) {
+        setLeaderboardStatus("Leaderboard goes live after Redis is added in Vercel.");
+        return;
+      }
+      if (!response.ok) {
+        setLeaderboardStatus("Could not load the leaderboard.");
+        return;
+      }
+      renderLeaderboard(payload);
+    } catch {
+      setLeaderboardStatus("Leaderboard is available on the Vercel site.");
+    }
+  }
+
+  async function submitLeaderboard() {
+    const name = sanitizePlayerName(playerName);
+    if (!name) return;
+    if (Date.now() - lastLeaderboardPost < 4000) return;
+    lastLeaderboardPost = Date.now();
+    try {
+      const response = await fetch("/api/leaderboard", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: playerId,
+          name,
+          totalEarned: state.totalEarned,
+          progress: crownProgress(),
+          milestone: getLatestMilestone(),
+          activeSeconds: Math.floor(state.activeSeconds),
+          completed: state.completed
+        })
+      });
+      if (response.ok) fetchLeaderboard();
+    } catch {
+      /* Local static servers have no API; ignore. */
+    }
+  }
+
+  function sanitizePlayerName(value) {
+    return String(value || "").replace(/[<>]/g, "").replace(/\s+/g, " ").trim().slice(0, 20);
   }
 
   function getMilestoneMultiplier() {
@@ -200,6 +330,7 @@
           ? "You conquered the internet!"
           : (milestone.boost ? "All income permanently boosted by 50%." : "The empire keeps expanding.");
         toast(milestone.name, message);
+        submitLeaderboard();
       }
     });
 
@@ -208,6 +339,7 @@
       dom.finalTime.textContent = formatTime(state.activeSeconds);
       showCompleteModal();
       saveGame();
+      submitLeaderboard();
     }
   }
 
@@ -665,7 +797,40 @@
       if (card.dataset.upgrade !== undefined) buyUpgrade(Number(card.dataset.upgrade));
     });
 
-    $("#saveButton").addEventListener("click", () => saveGame(true));
+    if (dom.playerName) {
+      dom.playerName.value = playerName;
+      const commitName = () => {
+        playerName = sanitizePlayerName(dom.playerName.value);
+        dom.playerName.value = playerName;
+        try { localStorage.setItem(PLAYER_NAME_KEY, playerName); } catch { /* ignore */ }
+        if (playerName) {
+          lastLeaderboardPost = 0;
+          submitLeaderboard();
+          toast("Nickname set", `Playing as ${playerName}.`);
+        }
+      };
+      dom.playerName.addEventListener("change", commitName);
+      dom.playerName.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          commitName();
+        }
+      });
+    }
+
+    if (dom.refreshLeaderboard) {
+      dom.refreshLeaderboard.addEventListener("click", () => {
+        lastLeaderboardPost = 0;
+        submitLeaderboard();
+        fetchLeaderboard();
+      });
+    }
+
+    $("#saveButton").addEventListener("click", () => {
+      saveGame(true);
+      lastLeaderboardPost = 0;
+      submitLeaderboard();
+    });
     $("#exportButton").addEventListener("click", exportSave);
     $("#importButton").addEventListener("click", importSave);
     $("#resetButton").addEventListener("click", resetGame);
@@ -687,6 +852,7 @@
     state.activeSeconds += delta;
     uiAccumulator += delta;
     saveAccumulator += delta;
+    leaderboardTimer += delta;
 
     if (uiAccumulator >= 0.1) {
       updateUI();
@@ -697,6 +863,11 @@
       saveGame();
       saveAccumulator = 0;
     }
+    if (leaderboardTimer >= 30) {
+      leaderboardTimer = 0;
+      if (playerName) submitLeaderboard();
+      else fetchLeaderboard();
+    }
     requestAnimationFrame(gameLoop);
   }
 
@@ -706,6 +877,8 @@
   applyAudioSettings();
   renderShop();
   updateUI();
+  fetchLeaderboard();
+  if (playerName) submitLeaderboard();
   if (state.completed) {
     dom.finalTime.textContent = formatTime(state.activeSeconds);
   }
