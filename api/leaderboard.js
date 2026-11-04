@@ -14,10 +14,16 @@ const PLAYER_PREFIX = "tips-leaderboard:player:";
 const TOP_N = 50;
 const MAX_NAME = 20;
 
+function cleanEnv(value) {
+  return String(value || "").trim().replace(/^["']|["']$/g, "");
+}
+
 function redisConfig() {
-  const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
-  return url && token ? { url, token } : null;
+  const url = cleanEnv(process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL);
+  const token = cleanEnv(process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN);
+  if (!url || !token) return null;
+  if (!url.startsWith("https://") || /[\s=]/.test(token) || token.includes("UPSTASH_")) return null;
+  return { url, token };
 }
 
 function cors(res) {
@@ -193,6 +199,6 @@ module.exports = async (req, res) => {
     }
     json(res, 405, { error: "Method not allowed" });
   } catch (error) {
-    json(res, 500, { error: "Leaderboard failed", detail: String(error.message || error) });
+    json(res, 500, { error: "Leaderboard failed" });
   }
 };
