@@ -85,6 +85,15 @@
       <p class="eyebrow">Road to the crown</p>
       <h2>Milestones</h2>
       <ul class="milestone-list" id="milestones"></ul>
+
+      <div class="section-divider"></div>
+      <p class="eyebrow">Worldwide</p>
+      <div class="leaderboard-heading">
+        <h2>Leaderboard</h2>
+        <button class="small-button" id="refreshLeaderboard" type="button">Refresh</button>
+      </div>
+      <p class="leaderboard-status" id="leaderboardStatus">Set a nickname in settings to join.</p>
+      <ol class="leaderboard-list" id="leaderboardList"></ol>
     </aside>
 
     <section class="panel click-stage" aria-labelledby="stageTitle">
@@ -127,6 +136,10 @@
   <section class="settings-popover" id="settingsPanel" role="dialog" aria-label="Game settings" hidden>
     <p class="eyebrow">Preferences</p>
     <h2>Settings</h2>
+    <label class="setting-row name-row">
+      <span>Name</span>
+      <input id="playerName" type="text" maxlength="20" placeholder="Your nickname" autocomplete="nickname">
+    </label>
     <label class="setting-row">
       <span>Music</span>
       <input id="musicVolume" type="range" min="0" max="100" value="28">
